@@ -1,6 +1,6 @@
 # build-your-own-notepad
 
-An educational project that demonstrates how to build a simple yet functional Notepad-like text editor using Python and Tkinter.
+An educational project that demonstrates how to build a simple yet functional Notepad-like text editor using Python and Tkinter. It now mirrors the classic Notepad experience with File/Edit/Format/View menus, word wrap, zoom controls, and customizable fonts.
 
 ## Installation
 
@@ -20,8 +20,12 @@ Run the application from the project root:
 python main.py
 ```
 
-This launches a window with a basic text editor, file menu, and scrollable text area. Use **File → Open...** to load files, **File → Save** or **Save As...** to persist changes, and close the window to trigger the unsaved changes prompt.
+This launches a window with a full-featured text editor. Highlights include:
 
-## Screenshot (optional)
+- **File**: New documents, open existing files, save/save-as, new window, and exit with unsaved-change prompts.
+- **Edit**: Undo/redo, cut/copy/paste/delete, select all, and time/date insertion (F5).
+- **Format**: Toggle word wrap and choose fonts and sizes.
+- **View**: Zoom in/out/reset and show/hide the status bar.
+- **Editor**: Scrollable text area with horizontal/vertical scrollbars and line/column status indicator.
 
-If you capture a screenshot of the application in use, place it in the repository and reference it here.
+Keyboard shortcuts like Ctrl+N/Ctrl+O/Ctrl+S, Ctrl+Z/Ctrl+Y, and Ctrl++/Ctrl+-/Ctrl+0 are supported.
