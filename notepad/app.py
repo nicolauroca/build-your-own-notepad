@@ -41,6 +41,7 @@ class NotepadApp:
         self.closed_documents: list[dict[str, str | None]] = []
         self.recent_files: list[str] = []
         self.last_search_query: str | None = None
+        self.command_actions: list[tuple[str, callable]] = []
 
         self.ui = NotepadUI(
             self.root,
@@ -85,11 +86,14 @@ class NotepadApp:
             on_content_change=self.on_content_change,
             on_cursor_move=self.update_status,
             on_tab_change=self.on_tab_change,
+            on_open_command_palette=self.open_command_palette,
         )
 
         self.documents: dict[str, Document] = {}
         self._add_blank_document()
         self.ui.update_recent_files(self.recent_files)
+        self._register_command_actions()
+        self.ui.update_commands_menu(self.command_actions)
 
         self.root.protocol("WM_DELETE_WINDOW", self.on_exit)
         self.update_title()
@@ -156,6 +160,114 @@ class NotepadApp:
         index = document.text.index(tk.INSERT)
         line, column = (int(num) for num in index.split("."))
         self.ui.set_status(f"{document.language} | Ln {line}, Col {column + 1}")
+
+    # Command palette helpers
+    def _register_command(self, name: str, action) -> None:
+        self.command_actions.append((name, action))
+
+    def _register_command_actions(self) -> None:
+        self.command_actions.clear()
+        self._register_command("Uppercase selection", self.uppercase_selection)
+        self._register_command("Lowercase selection", self.lowercase_selection)
+        self._register_command("Title Case selection", self.title_case_selection)
+        self._register_command("Sentence case selection", self.sentence_case_selection)
+        self._register_command("Swap case", self.swap_case_selection)
+        self._register_command("Trim trailing whitespace", self.trim_trailing_whitespace)
+        self._register_command("Trim leading whitespace", self.trim_leading_whitespace)
+        self._register_command("Trim surrounding whitespace", self.trim_borders)
+        self._register_command("Convert tabs to spaces", self.convert_tabs_to_spaces)
+        self._register_command("Convert spaces to tabs", self.convert_spaces_to_tabs)
+        self._register_command("Indent with 2 spaces", self.indent_with_two_spaces)
+        self._register_command("Indent with 4 spaces", self.indent_with_four_spaces)
+        self._register_command("Toggle comment", self.toggle_comment)
+        self._register_command("Comment selection", self.comment_selection)
+        self._register_command("Uncomment selection", self.uncomment_selection)
+        self._register_command("Duplicate line/selection", self.duplicate_selection_or_line)
+        self._register_command("Duplicate above", self.duplicate_above)
+        self._register_command("Duplicate below", self.duplicate_below)
+        self._register_command("Delete current line", self.delete_line)
+        self._register_command("Move line up", self.move_line_up)
+        self._register_command("Move line down", self.move_line_down)
+        self._register_command("Join lines", self.join_lines)
+        self._register_command("Split selection by commas", self.split_lines_by_commas)
+        self._register_command("Sort lines ascending", self.sort_lines_ascending)
+        self._register_command("Sort lines descending", self.sort_lines_descending)
+        self._register_command("Reverse lines", self.reverse_lines)
+        self._register_command("Unique lines", self.unique_lines)
+        self._register_command("Remove blank lines", self.remove_blank_lines)
+        self._register_command("Wrap with ( )", self.wrap_with_parentheses)
+        self._register_command("Wrap with [ ]", self.wrap_with_brackets)
+        self._register_command("Wrap with { }", self.wrap_with_braces)
+        self._register_command("Wrap with single quotes", self.wrap_with_single_quotes)
+        self._register_command("Wrap with double quotes", self.wrap_with_double_quotes)
+        self._register_command("Wrap with backticks", self.wrap_with_backticks)
+        self._register_command("Convert to snake_case", self.to_snake_case)
+        self._register_command("Convert to camelCase", self.to_camel_case)
+        self._register_command("Convert to PascalCase", self.to_pascal_case)
+        self._register_command("Convert to kebab-case", self.to_kebab_case)
+        self._register_command("Convert to UPPER_SNAKE", self.to_upper_snake_case)
+        self._register_command("Insert TODO comment", self.insert_todo_comment)
+        self._register_command("Insert ISO timestamp", self.insert_iso_timestamp)
+        self._register_command("Add line numbers", self.add_line_numbers)
+        self._register_command("Remove line numbers", self.remove_line_numbers)
+        self._register_command("Align assignments", self.align_assignments)
+        self._register_command("Toggle bullet list", self.toggle_bullet_list)
+        self._register_command("Toggle numbered list", self.toggle_numbered_list)
+        self._register_command("Transpose characters", self.transpose_characters)
+        self._register_command("Select current line", self.select_current_line)
+        self._register_command("Select word", self.select_word)
+        self._register_command("Go to matching bracket", self.go_to_matching_bracket)
+        self._register_command("Sort by line length", self.sort_by_line_length)
+        self._register_command("Collapse multiple spaces", self.collapse_spaces)
+        self._register_command("Pad numbers with zeros", self.pad_numbers)
+        self._register_command("Strip BOM", self.strip_bom)
+        self._register_command("Convert quotes to double", self.normalize_double_quotes)
+        self._register_command("Convert quotes to single", self.normalize_single_quotes)
+
+    def open_command_palette(self) -> None:  # pragma: no cover - UI driven
+        palette = tk.Toplevel(self.root)
+        palette.title("Command Palette")
+        palette.geometry("420x480")
+        palette.transient(self.root)
+        palette.grab_set()
+
+        tk.Label(palette, text="Search command:").pack(anchor=tk.W, padx=10, pady=(10, 2))
+        query_var = tk.StringVar()
+        entry = tk.Entry(palette, textvariable=query_var)
+        entry.pack(fill=tk.X, padx=10)
+
+        scrollbar = tk.Scrollbar(palette)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        listbox = tk.Listbox(palette, yscrollcommand=scrollbar.set)
+        listbox.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        scrollbar.config(command=listbox.yview)
+
+        def refresh_list(*_):
+            query = query_var.get().lower()
+            listbox.delete(0, tk.END)
+            for name, _action in self.command_actions:
+                if query in name.lower():
+                    listbox.insert(tk.END, name)
+            if listbox.size():
+                listbox.selection_set(0)
+
+        def run_selected(event=None):
+            if not listbox.size():
+                return
+            selection = listbox.get(listbox.curselection())
+            for name, action in self.command_actions:
+                if name == selection:
+                    action()
+                    break
+            palette.destroy()
+
+        entry.bind("<KeyRelease>", refresh_list)
+        listbox.bind("<Double-Button-1>", run_selected)
+        listbox.bind("<Return>", run_selected)
+        entry.focus_set()
+        refresh_list()
+        palette.wait_window()
+
 
     def new_file(self) -> None:  # pragma: no cover - UI driven
         """Create a blank document in a new tab."""
@@ -333,21 +445,12 @@ class NotepadApp:
         self.ui.toggle_toolbar(self.toolbar_visible)
 
     def choose_font(self) -> None:  # pragma: no cover - UI driven
-        current_family = self.font.actual().get("family", "Arial")
+        current_family = self.font.actual().get("family", "Consolas")
         current_size = self.font.actual().get("size", 12)
-
-        family = simpledialog.askstring(
-            "Font Family", "Enter font family (e.g., Arial, Courier New):", initialvalue=current_family
-        )
-        if not family:
+        selection = self.ui.prompt_for_font_choice(current_family, current_size)
+        if not selection:
             return
-
-        size = simpledialog.askinteger(
-            "Font Size", "Enter font size:", initialvalue=current_size, minvalue=6, maxvalue=96
-        )
-        if not size:
-            return
-
+        family, size = selection
         self.font.config(family=family, size=size)
         self.update_status()
 
@@ -595,6 +698,364 @@ class NotepadApp:
         document.dirty = False
         self._add_recent_file(file_path)
         self.update_title()
+
+    # ----- Advanced editing helpers -----
+    def _active_text(self) -> tk.Text:
+        return self._current_document().text
+
+    def _selection_range(self, text: tk.Text) -> tuple[str, str] | None:
+        try:
+            return text.index(tk.SEL_FIRST), text.index(tk.SEL_LAST)
+        except tk.TclError:
+            return None
+
+    def _apply_transform(self, transform, *, default_to_document: bool = True) -> None:
+        document = self._current_document()
+        text = document.text
+        selection = self._selection_range(text)
+        if selection:
+            start, end = selection
+        elif default_to_document:
+            start, end = "1.0", "end-1c"
+        else:
+            line = text.index("insert linestart"), text.index("insert lineend")
+            start, end = line
+
+        snippet = text.get(start, end)
+        text.delete(start, end)
+        text.insert(start, transform(snippet))
+        document.dirty = True
+        self.update_title()
+        self.update_status()
+
+    def uppercase_selection(self) -> None:
+        self._apply_transform(lambda s: s.upper())
+
+    def lowercase_selection(self) -> None:
+        self._apply_transform(lambda s: s.lower())
+
+    def title_case_selection(self) -> None:
+        self._apply_transform(lambda s: s.title())
+
+    def sentence_case_selection(self) -> None:
+        def _sentence(text: str) -> str:
+            parts = text.split(".")
+            return ".".join(p.strip().capitalize() if p.strip() else "" for p in parts)
+
+        self._apply_transform(_sentence)
+
+    def swap_case_selection(self) -> None:
+        self._apply_transform(lambda s: s.swapcase())
+
+    def trim_trailing_whitespace(self) -> None:
+        self._apply_transform(lambda s: "\n".join(line.rstrip() for line in s.splitlines()))
+
+    def trim_leading_whitespace(self) -> None:
+        self._apply_transform(lambda s: "\n".join(line.lstrip() for line in s.splitlines()))
+
+    def trim_borders(self) -> None:
+        self._apply_transform(lambda s: "\n".join(line.strip() for line in s.splitlines()))
+
+    def convert_tabs_to_spaces(self) -> None:
+        self._apply_transform(lambda s: s.replace("\t", "    "))
+
+    def convert_spaces_to_tabs(self) -> None:
+        self._apply_transform(lambda s: s.replace("    ", "\t"))
+
+    def indent_with_two_spaces(self) -> None:
+        self._apply_transform(lambda s: "\n".join("  " + line.lstrip() for line in s.splitlines()))
+
+    def indent_with_four_spaces(self) -> None:
+        self._apply_transform(lambda s: "\n".join("    " + line.lstrip() for line in s.splitlines()))
+
+    def toggle_comment(self) -> None:
+        document = self._current_document()
+        text = document.text
+        selection = self._selection_range(text)
+        if not selection:
+            start, end = text.index("insert linestart"), text.index("insert lineend")
+        else:
+            start, end = selection
+        lines = text.get(start, end).splitlines()
+        if all(line.strip().startswith("#") for line in lines if line.strip()):
+            new_lines = [line.replace("#", "", 1) if line.strip().startswith("#") else line for line in lines]
+        else:
+            new_lines = [f"# {line}" if line.strip() else line for line in lines]
+        text.delete(start, end)
+        text.insert(start, "\n".join(new_lines))
+        document.dirty = True
+        self.update_title()
+
+    def comment_selection(self) -> None:
+        self._apply_transform(lambda s: "\n".join(f"# {line}" if line.strip() else line for line in s.splitlines()))
+
+    def uncomment_selection(self) -> None:
+        self._apply_transform(lambda s: "\n".join(line[1:].lstrip() if line.strip().startswith("#") else line for line in s.splitlines()))
+
+    def duplicate_selection_or_line(self) -> None:
+        document = self._current_document()
+        text = document.text
+        selection = self._selection_range(text)
+        if selection:
+            start, end = selection
+        else:
+            start, end = text.index("insert linestart"), text.index("insert lineend+1c")
+        content = text.get(start, end)
+        text.insert(end, content)
+        document.dirty = True
+        self.update_title()
+
+    def duplicate_above(self) -> None:
+        document = self._current_document()
+        text = document.text
+        line_start = text.index("insert linestart")
+        line_end = text.index("insert lineend+1c")
+        content = text.get(line_start, line_end)
+        text.insert(line_start, content)
+        document.dirty = True
+        self.update_title()
+
+    def duplicate_below(self) -> None:
+        document = self._current_document()
+        text = document.text
+        line_start = text.index("insert linestart")
+        line_end = text.index("insert lineend+1c")
+        content = text.get(line_start, line_end)
+        text.insert(line_end, content)
+        document.dirty = True
+        self.update_title()
+
+    def delete_line(self) -> None:
+        document = self._current_document()
+        text = document.text
+        start, end = text.index("insert linestart"), text.index("insert lineend+1c")
+        text.delete(start, end)
+        document.dirty = True
+        self.update_title()
+
+    def move_line_up(self) -> None:
+        self._move_line(-1)
+
+    def move_line_down(self) -> None:
+        self._move_line(1)
+
+    def _move_line(self, direction: int) -> None:
+        document = self._current_document()
+        text = document.text
+        current_line = int(text.index("insert").split(".")[0])
+        target_line = current_line + direction
+        if target_line < 1:
+            return
+        line_start = f"{current_line}.0"
+        line_end = f"{current_line}.0 lineend+1c"
+        content = text.get(line_start, line_end)
+        text.delete(line_start, line_end)
+        text.insert(f"{target_line}.0", content)
+        document.dirty = True
+        self.update_title()
+
+    def join_lines(self) -> None:
+        self._apply_transform(lambda s: " ".join(line.strip() for line in s.splitlines()))
+
+    def split_lines_by_commas(self) -> None:
+        self._apply_transform(lambda s: "\n".join(part.strip() for part in s.split(",")))
+
+    def sort_lines_ascending(self) -> None:
+        self._apply_transform(lambda s: "\n".join(sorted(s.splitlines())))
+
+    def sort_lines_descending(self) -> None:
+        self._apply_transform(lambda s: "\n".join(sorted(s.splitlines(), reverse=True)))
+
+    def sort_by_line_length(self) -> None:
+        self._apply_transform(lambda s: "\n".join(sorted(s.splitlines(), key=len)))
+
+    def reverse_lines(self) -> None:
+        self._apply_transform(lambda s: "\n".join(reversed(s.splitlines())))
+
+    def unique_lines(self) -> None:
+        def _unique(text: str) -> str:
+            seen = set()
+            output = []
+            for line in text.splitlines():
+                if line not in seen:
+                    output.append(line)
+                    seen.add(line)
+            return "\n".join(output)
+
+        self._apply_transform(_unique)
+
+    def remove_blank_lines(self) -> None:
+        self._apply_transform(lambda s: "\n".join(line for line in s.splitlines() if line.strip()))
+
+    def wrap_with_parentheses(self) -> None:
+        self._apply_transform(lambda s: f"({s})")
+
+    def wrap_with_brackets(self) -> None:
+        self._apply_transform(lambda s: f"[{s}]")
+
+    def wrap_with_braces(self) -> None:
+        self._apply_transform(lambda s: f"{{{s}}}")
+
+    def wrap_with_single_quotes(self) -> None:
+        self._apply_transform(lambda s: f"'{s}'")
+
+    def wrap_with_double_quotes(self) -> None:
+        self._apply_transform(lambda s: f'"{s}"')
+
+    def wrap_with_backticks(self) -> None:
+        self._apply_transform(lambda s: f"`{s}`")
+
+    def _normalize_words(self, text: str) -> list[str]:
+        return [word for word in text.replace("-", " ").replace("_", " ").split() if word]
+
+    def to_snake_case(self) -> None:
+        self._apply_transform(lambda s: "_".join(self._normalize_words(s)).lower())
+
+    def to_camel_case(self) -> None:
+        def camel(words: list[str]) -> str:
+            if not words:
+                return ""
+            first, *rest = words
+            return first.lower() + "".join(word.capitalize() for word in rest)
+
+        self._apply_transform(lambda s: camel(self._normalize_words(s)))
+
+    def to_pascal_case(self) -> None:
+        self._apply_transform(lambda s: "".join(word.capitalize() for word in self._normalize_words(s)))
+
+    def to_kebab_case(self) -> None:
+        self._apply_transform(lambda s: "-".join(self._normalize_words(s)).lower())
+
+    def to_upper_snake_case(self) -> None:
+        self._apply_transform(lambda s: "_".join(self._normalize_words(s)).upper())
+
+    def insert_todo_comment(self) -> None:
+        document = self._current_document()
+        text = document.text
+        text.insert(tk.INSERT, "# TODO: ")
+        document.dirty = True
+        self.update_title()
+
+    def insert_iso_timestamp(self) -> None:
+        document = self._current_document()
+        document.text.insert(tk.INSERT, datetime.now().isoformat())
+        document.dirty = True
+        self.update_title()
+
+    def add_line_numbers(self) -> None:
+        def _add(text: str) -> str:
+            return "\n".join(f"{idx + 1}: {line}" for idx, line in enumerate(text.splitlines()))
+
+        self._apply_transform(_add)
+
+    def remove_line_numbers(self) -> None:
+        import re
+
+        self._apply_transform(lambda s: "\n".join(re.sub(r"^\d+:\s*", "", line) for line in s.splitlines()))
+
+    def align_assignments(self) -> None:
+        def _align(text: str) -> str:
+            lines = text.splitlines()
+            positions = [line.find("=") for line in lines if "=" in line]
+            if not positions:
+                return text
+            target = max(positions)
+            aligned = []
+            for line in lines:
+                if "=" not in line:
+                    aligned.append(line)
+                    continue
+                left, right = line.split("=", 1)
+                aligned.append(f"{left.rstrip():<{target}} = {right.lstrip()}")
+            return "\n".join(aligned)
+
+        self._apply_transform(_align)
+
+    def toggle_bullet_list(self) -> None:
+        def _toggle(text: str) -> str:
+            lines = text.splitlines()
+            if all(line.strip().startswith("- ") for line in lines if line.strip()):
+                return "\n".join(line.replace("- ", "", 1) if line.strip().startswith("- ") else line for line in lines)
+            return "\n".join(f"- {line}" if line.strip() else line for line in lines)
+
+        self._apply_transform(_toggle)
+
+    def toggle_numbered_list(self) -> None:
+        def _toggle(text: str) -> str:
+            lines = text.splitlines()
+            if all(line.lstrip().split(" ", 1)[0].rstrip(".").isdigit() for line in lines if line.strip()):
+                return "\n".join(" ".join(line.split(" ", 1)[1:]) if line.strip() else line for line in lines)
+            return "\n".join(f"{idx + 1}. {line}" if line.strip() else line for idx, line in enumerate(lines))
+
+        self._apply_transform(_toggle)
+
+    def transpose_characters(self) -> None:
+        document = self._current_document()
+        text = document.text
+        index = text.index(tk.INSERT)
+        line, column = map(int, index.split("."))
+        if column < 1:
+            return
+        left = f"{line}.{column - 1}"
+        right = f"{line}.{column}"
+        chars = text.get(left, right)
+        if len(chars) < 2:
+            return
+        text.delete(left, right)
+        text.insert(left, chars[1] + chars[0])
+        document.dirty = True
+        self.update_title()
+
+    def select_current_line(self) -> None:
+        text = self._active_text()
+        start, end = text.index("insert linestart"), text.index("insert lineend")
+        text.tag_add(tk.SEL, start, end)
+        text.mark_set(tk.INSERT, end)
+
+    def select_word(self) -> None:
+        text = self._active_text()
+        start = text.index("insert wordstart")
+        end = text.index("insert wordend")
+        text.tag_add(tk.SEL, start, end)
+        text.mark_set(tk.INSERT, end)
+
+    def go_to_matching_bracket(self) -> None:
+        pairs = {"(": ")", "[": "]", "{": "}"}
+        text = self._active_text()
+        current = text.get(tk.INSERT)
+        for open_b, close_b in pairs.items():
+            if current == open_b:
+                match = text.search(close_b, tk.INSERT, stopindex="end")
+                if match:
+                    text.mark_set(tk.INSERT, match)
+                return
+            if current == close_b:
+                match = text.search(open_b, tk.INSERT, backwards=True, stopindex="1.0")
+                if match:
+                    text.mark_set(tk.INSERT, match)
+                return
+
+    def collapse_spaces(self) -> None:
+        import re
+
+        self._apply_transform(lambda s: re.sub(r"\s+", " ", s))
+
+    def pad_numbers(self) -> None:
+        import re
+
+        def _pad(text: str) -> str:
+            return re.sub(r"\b(\d+)\b", lambda m: m.group(1).zfill(3), text)
+
+        self._apply_transform(_pad)
+
+    def strip_bom(self) -> None:
+        self._apply_transform(lambda s: s.replace("\ufeff", ""))
+
+    def normalize_double_quotes(self) -> None:
+        self._apply_transform(lambda s: s.replace("'", '"'))
+
+    def normalize_single_quotes(self) -> None:
+        self._apply_transform(lambda s: s.replace('"', "'"))
 
 
 def run() -> None:  # pragma: no cover - UI driven
