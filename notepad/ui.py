@@ -19,6 +19,16 @@ class NotepadUI:
         on_open,
         on_save,
         on_save_as,
+        on_save_all,
+        on_reload_file,
+        on_open_recent,
+        on_close_tab,
+        on_close_all,
+        on_close_other_tabs,
+        on_close_tabs_left,
+        on_close_tabs_right,
+        on_reopen_closed_tab,
+        on_duplicate_tab,
         on_exit,
         on_undo,
         on_redo,
@@ -34,6 +44,13 @@ class NotepadUI:
         on_zoom_out,
         on_zoom_reset,
         on_toggle_status_bar,
+        on_toggle_toolbar,
+        on_find,
+        on_find_next,
+        on_find_previous,
+        on_replace,
+        on_go_to,
+        on_set_language,
         on_content_change,
         on_cursor_move,
         on_tab_change,
@@ -46,6 +63,10 @@ class NotepadUI:
         self.status_bar = tk.Label(self.root, textvariable=self.status, anchor=tk.W)
         self.word_wrap_var = tk.BooleanVar(value=False)
         self.status_bar_var = tk.BooleanVar(value=True)
+        self.toolbar_var = tk.BooleanVar(value=True)
+
+        self.toolbar = tk.Frame(self.root, bd=1, relief=tk.RAISED)
+        self._on_open_recent = on_open_recent
 
         self._build_menu(
             on_new,
@@ -53,6 +74,16 @@ class NotepadUI:
             on_open,
             on_save,
             on_save_as,
+            on_save_all,
+            on_reload_file,
+            on_open_recent,
+            on_close_tab,
+            on_close_all,
+            on_close_other_tabs,
+            on_close_tabs_left,
+            on_close_tabs_right,
+            on_reopen_closed_tab,
+            on_duplicate_tab,
             on_exit,
             on_undo,
             on_redo,
@@ -68,6 +99,29 @@ class NotepadUI:
             on_zoom_out,
             on_zoom_reset,
             on_toggle_status_bar,
+            on_toggle_toolbar,
+            on_find,
+            on_find_next,
+            on_find_previous,
+            on_replace,
+            on_go_to,
+            on_set_language,
+        )
+        self._build_toolbar(
+            on_new,
+            on_open,
+            on_save,
+            on_save_as,
+            on_save_all,
+            on_reload_file,
+            on_close_tab,
+            on_undo,
+            on_redo,
+            on_cut,
+            on_copy,
+            on_paste,
+            on_find,
+            on_replace,
         )
         self._build_editor(on_content_change, on_cursor_move, on_tab_change)
 
@@ -78,6 +132,16 @@ class NotepadUI:
         on_open,
         on_save,
         on_save_as,
+        on_save_all,
+        on_reload_file,
+        on_open_recent,
+        on_close_tab,
+        on_close_all,
+        on_close_other_tabs,
+        on_close_tabs_left,
+        on_close_tabs_right,
+        on_reopen_closed_tab,
+        on_duplicate_tab,
         on_exit,
         on_undo,
         on_redo,
@@ -93,6 +157,13 @@ class NotepadUI:
         on_zoom_out,
         on_zoom_reset,
         on_toggle_status_bar,
+        on_toggle_toolbar,
+        on_find,
+        on_find_next,
+        on_find_previous,
+        on_replace,
+        on_go_to,
+        on_set_language,
     ) -> None:
         menubar = tk.Menu(self.root)
 
@@ -101,7 +172,20 @@ class NotepadUI:
         file_menu.add_command(label="New Window", command=on_new_window)
         file_menu.add_command(label="Open...", command=on_open, accelerator="Ctrl+O")
         file_menu.add_command(label="Save", command=on_save, accelerator="Ctrl+S")
-        file_menu.add_command(label="Save As...", command=on_save_as)
+        file_menu.add_command(label="Save As...", command=on_save_as, accelerator="F12")
+        file_menu.add_command(label="Save All", command=on_save_all, accelerator="Ctrl+Shift+S")
+        file_menu.add_command(label="Reload from Disk", command=on_reload_file)
+        file_menu.add_separator()
+        file_menu.add_command(label="Close", command=on_close_tab, accelerator="Ctrl+W")
+        file_menu.add_command(label="Close All", command=on_close_all)
+        file_menu.add_command(label="Close All Except This", command=on_close_other_tabs)
+        file_menu.add_command(label="Close Tabs to the Left", command=on_close_tabs_left)
+        file_menu.add_command(label="Close Tabs to the Right", command=on_close_tabs_right)
+        file_menu.add_command(label="Reopen Closed Tab", command=on_reopen_closed_tab)
+        file_menu.add_command(label="Duplicate Tab", command=on_duplicate_tab)
+        file_menu.add_separator()
+        self.recent_menu = tk.Menu(file_menu, tearoff=0)
+        file_menu.add_cascade(label="Open Recent", menu=self.recent_menu)
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=on_exit)
 
@@ -117,6 +201,13 @@ class NotepadUI:
         edit_menu.add_command(label="Select All", command=on_select_all, accelerator="Ctrl+A")
         edit_menu.add_command(label="Time/Date", command=on_time_date, accelerator="F5")
 
+        search_menu = tk.Menu(menubar, tearoff=0)
+        search_menu.add_command(label="Find", command=on_find, accelerator="Ctrl+F")
+        search_menu.add_command(label="Find Next", command=on_find_next, accelerator="F3")
+        search_menu.add_command(label="Find Previous", command=on_find_previous, accelerator="Shift+F3")
+        search_menu.add_command(label="Replace", command=on_replace, accelerator="Ctrl+H")
+        search_menu.add_command(label="Go To", command=on_go_to, accelerator="Ctrl+G")
+
         format_menu = tk.Menu(menubar, tearoff=0)
         format_menu.add_checkbutton(
             label="Word Wrap", command=on_word_wrap, variable=self.word_wrap_var
@@ -131,17 +222,40 @@ class NotepadUI:
         view_menu.add_checkbutton(
             label="Status Bar", command=on_toggle_status_bar, variable=self.status_bar_var
         )
+        view_menu.add_checkbutton(
+            label="Toolbar", command=on_toggle_toolbar, variable=self.toolbar_var
+        )
+
+        language_menu = tk.Menu(menubar, tearoff=0)
+        for language in ["Plain Text", "Python", "JavaScript", "HTML", "CSS", "Markdown", "JSON"]:
+            language_menu.add_radiobutton(label=language, command=lambda l=language: on_set_language(l))
+
+        settings_menu = tk.Menu(menubar, tearoff=0)
+        settings_menu.add_command(label="Preferences (Font)", command=on_choose_font)
+        settings_menu.add_checkbutton(
+            label="Word Wrap", command=on_word_wrap, variable=self.word_wrap_var
+        )
+        settings_menu.add_checkbutton(
+            label="Status Bar", command=on_toggle_status_bar, variable=self.status_bar_var
+        )
+        settings_menu.add_checkbutton(
+            label="Toolbar", command=on_toggle_toolbar, variable=self.toolbar_var
+        )
 
         menubar.add_cascade(label="File", menu=file_menu)
         menubar.add_cascade(label="Edit", menu=edit_menu)
+        menubar.add_cascade(label="Search", menu=search_menu)
         menubar.add_cascade(label="Format", menu=format_menu)
         menubar.add_cascade(label="View", menu=view_menu)
+        menubar.add_cascade(label="Language", menu=language_menu)
+        menubar.add_cascade(label="Settings", menu=settings_menu)
         self.root.config(menu=menubar)
 
         self.root.bind_all("<Control-n>", lambda event: on_new())
         self.root.bind_all("<Control-o>", lambda event: on_open())
         self.root.bind_all("<Control-s>", lambda event: on_save())
-        self.root.bind_all("<Control-Shift-S>", lambda event: on_save_as())
+        self.root.bind_all("<F12>", lambda event: on_save_as())
+        self.root.bind_all("<Control-Shift-s>", lambda event: on_save_all())
         self.root.bind_all("<Control-z>", lambda event: on_undo())
         self.root.bind_all("<Control-y>", lambda event: on_redo())
         self.root.bind_all("<Control-x>", lambda event: on_cut())
@@ -152,12 +266,67 @@ class NotepadUI:
         self.root.bind_all("<Control-plus>", lambda event: on_zoom_in())
         self.root.bind_all("<Control-minus>", lambda event: on_zoom_out())
         self.root.bind_all("<Control-0>", lambda event: on_zoom_reset())
+        self.root.bind_all("<Control-f>", lambda event: on_find())
+        self.root.bind_all("<Control-h>", lambda event: on_replace())
+        self.root.bind_all("<Control-g>", lambda event: on_go_to())
+        self.root.bind_all("<F3>", lambda event: on_find_next())
+        self.root.bind_all("<Shift-F3>", lambda event: on_find_previous())
+        self.root.bind_all("<Control-w>", lambda event: on_close_tab())
+
+        self._build_tab_menu(
+            on_close_tab,
+            on_close_all,
+            on_close_other_tabs,
+            on_close_tabs_left,
+            on_close_tabs_right,
+            on_reopen_closed_tab,
+            on_duplicate_tab,
+        )
+
+    def _build_toolbar(
+        self,
+        on_new,
+        on_open,
+        on_save,
+        on_save_as,
+        on_save_all,
+        on_reload_file,
+        on_close_tab,
+        on_undo,
+        on_redo,
+        on_cut,
+        on_copy,
+        on_paste,
+        on_find,
+        on_replace,
+    ) -> None:
+        for text, command in [
+            ("New", on_new),
+            ("Open", on_open),
+            ("Save", on_save),
+            ("Save As", on_save_as),
+            ("Save All", on_save_all),
+            ("Reload", on_reload_file),
+            ("Close", on_close_tab),
+            ("Undo", on_undo),
+            ("Redo", on_redo),
+            ("Cut", on_cut),
+            ("Copy", on_copy),
+            ("Paste", on_paste),
+            ("Find", on_find),
+            ("Replace", on_replace),
+        ]:
+            btn = tk.Button(self.toolbar, text=text, command=command, padx=4, pady=2)
+            btn.pack(side=tk.LEFT, padx=1, pady=1)
+
+        self.toolbar.pack(side=tk.TOP, fill=tk.X)
 
     def _build_editor(self, on_content_change, on_cursor_move, on_tab_change) -> None:
         self.frame.pack(fill=tk.BOTH, expand=True)
 
         self.notebook.pack(fill=tk.BOTH, expand=True)
         self.notebook.bind("<<NotebookTabChanged>>", on_tab_change)
+        self.notebook.bind("<Button-3>", self._open_tab_menu)
 
         self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
@@ -197,6 +366,11 @@ class NotepadUI:
         if tab_id:
             self.notebook.select(tab_id)
 
+    def remove_tab(self, tab_id: str) -> None:
+        if tab_id:
+            self.notebook.forget(tab_id)
+            self.text_widgets.pop(tab_id, None)
+
     def set_word_wrap(self, enabled: bool) -> None:
         for text in self.text_widgets.values():
             text.configure(wrap=tk.WORD if enabled else tk.NONE)
@@ -212,3 +386,50 @@ class NotepadUI:
         else:
             self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
             self.status_bar_var.set(True)
+
+    def toggle_toolbar(self, visible: bool) -> None:
+        if visible:
+            self.toolbar.pack(side=tk.TOP, fill=tk.X)
+        else:
+            self.toolbar.pack_forget()
+        self.toolbar_var.set(visible)
+
+    def _build_tab_menu(
+        self,
+        on_close_tab,
+        on_close_all,
+        on_close_other_tabs,
+        on_close_tabs_left,
+        on_close_tabs_right,
+        on_reopen_closed_tab,
+        on_duplicate_tab,
+    ) -> None:
+        self.tab_menu = tk.Menu(self.root, tearoff=0)
+        self.tab_menu.add_command(label="Close", command=on_close_tab)
+        self.tab_menu.add_command(label="Close All", command=on_close_all)
+        self.tab_menu.add_command(label="Close All But This", command=on_close_other_tabs)
+        self.tab_menu.add_command(label="Close Tabs to the Left", command=on_close_tabs_left)
+        self.tab_menu.add_command(label="Close Tabs to the Right", command=on_close_tabs_right)
+        self.tab_menu.add_separator()
+        self.tab_menu.add_command(label="Reopen Closed Tab", command=on_reopen_closed_tab)
+        self.tab_menu.add_command(label="Duplicate", command=on_duplicate_tab)
+
+    def _open_tab_menu(self, event) -> None:  # pragma: no cover - UI driven
+        try:
+            index = self.notebook.index(f"@{event.x},{event.y}")
+        except tk.TclError:
+            return
+        tab_id = self.notebook.tabs()[index]
+        self.notebook.select(tab_id)
+        self.tab_menu.tk_popup(event.x_root, event.y_root)
+
+    def tab_order(self) -> list[str]:
+        return list(self.notebook.tabs())
+
+    def update_recent_files(self, recent: list[str]) -> None:
+        self.recent_menu.delete(0, tk.END)
+        if not recent:
+            self.recent_menu.add_command(label="(empty)", state=tk.DISABLED)
+        else:
+            for path in recent:
+                self.recent_menu.add_command(label=path, command=lambda p=path: self._on_open_recent(p))
