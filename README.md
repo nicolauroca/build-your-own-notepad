@@ -29,7 +29,3 @@ This launches a window with a full-featured text editor. Highlights include:
 - **Editor**: Scrollable text area with horizontal/vertical scrollbars and line/column status indicator.
 
 Keyboard shortcuts like Ctrl+N/Ctrl+O/Ctrl+S, Ctrl+Z/Ctrl+Y, and Ctrl++/Ctrl+-/Ctrl+0 are supported.
-
-## Screenshot (optional)
-
-If you capture a screenshot of the application in use, place it in the repository and reference it here.
