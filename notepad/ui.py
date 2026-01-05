@@ -54,6 +54,7 @@ class NotepadUI:
         on_content_change,
         on_cursor_move,
         on_tab_change,
+        on_open_command_palette,
     ) -> None:
         self.root = root
         self.frame = tk.Frame(self.root)
@@ -67,6 +68,15 @@ class NotepadUI:
 
         self.toolbar = tk.Frame(self.root, bd=1, relief=tk.RAISED)
         self._on_open_recent = on_open_recent
+        self._on_close_tab = on_close_tab
+        self._on_new_tab = on_new
+        self._open_command_palette = on_open_command_palette
+        self.commands_menu: tk.Menu | None = None
+
+        # The editor frame must be packed before the toolbar so the toolbar can
+        # reliably position itself directly beneath the menu using the
+        # ``before`` parameter.
+        self.frame.pack(fill=tk.BOTH, expand=True)
 
         self._build_menu(
             on_new,
@@ -106,6 +116,7 @@ class NotepadUI:
             on_replace,
             on_go_to,
             on_set_language,
+            on_open_command_palette,
         )
         self._build_toolbar(
             on_new,
@@ -164,6 +175,7 @@ class NotepadUI:
         on_replace,
         on_go_to,
         on_set_language,
+        on_open_command_palette,
     ) -> None:
         menubar = tk.Menu(self.root)
 
@@ -242,6 +254,10 @@ class NotepadUI:
             label="Toolbar", command=on_toggle_toolbar, variable=self.toolbar_var
         )
 
+        self.commands_menu = tk.Menu(menubar, tearoff=0)
+        self.commands_menu.add_command(label="Command Palette...", command=on_open_command_palette, accelerator="Ctrl+Shift+P")
+        self.commands_menu.add_separator()
+
         menubar.add_cascade(label="File", menu=file_menu)
         menubar.add_cascade(label="Edit", menu=edit_menu)
         menubar.add_cascade(label="Search", menu=search_menu)
@@ -249,6 +265,7 @@ class NotepadUI:
         menubar.add_cascade(label="View", menu=view_menu)
         menubar.add_cascade(label="Language", menu=language_menu)
         menubar.add_cascade(label="Settings", menu=settings_menu)
+        menubar.add_cascade(label="Commands", menu=self.commands_menu)
         self.root.config(menu=menubar)
 
         self.root.bind_all("<Control-n>", lambda event: on_new())
@@ -272,6 +289,7 @@ class NotepadUI:
         self.root.bind_all("<F3>", lambda event: on_find_next())
         self.root.bind_all("<Shift-F3>", lambda event: on_find_previous())
         self.root.bind_all("<Control-w>", lambda event: on_close_tab())
+        self.root.bind_all("<Control-Shift-P>", lambda event: on_open_command_palette())
 
         self._build_tab_menu(
             on_close_tab,
@@ -300,33 +318,46 @@ class NotepadUI:
         on_find,
         on_replace,
     ) -> None:
-        for text, command in [
-            ("New", on_new),
-            ("Open", on_open),
-            ("Save", on_save),
-            ("Save As", on_save_as),
-            ("Save All", on_save_all),
-            ("Reload", on_reload_file),
-            ("Close", on_close_tab),
-            ("Undo", on_undo),
-            ("Redo", on_redo),
-            ("Cut", on_cut),
-            ("Copy", on_copy),
-            ("Paste", on_paste),
-            ("Find", on_find),
-            ("Replace", on_replace),
-        ]:
-            btn = tk.Button(self.toolbar, text=text, command=command, padx=4, pady=2)
-            btn.pack(side=tk.LEFT, padx=1, pady=1)
+        buttons = [
+            ("📄", "New file", on_new),
+            ("📂", "Open", on_open),
+            ("💾", "Save", on_save),
+            ("📝", "Save As", on_save_as),
+            ("🧰", "Save All", on_save_all),
+            ("🔄", "Reload", on_reload_file),
+            ("❌", "Close tab", on_close_tab),
+            ("↩", "Undo", on_undo),
+            ("↪", "Redo", on_redo),
+            ("✂", "Cut", on_cut),
+            ("📋", "Copy", on_copy),
+            ("📥", "Paste", on_paste),
+            ("🔍", "Find", on_find),
+            ("♻", "Replace", on_replace),
+        ]
 
-        self.toolbar.pack(side=tk.TOP, fill=tk.X)
+        for symbol, tooltip, command in buttons:
+            btn = tk.Button(
+                self.toolbar,
+                text=symbol,
+                command=command,
+                padx=6,
+                pady=4,
+                font=("Segoe UI Emoji", 11),
+                relief=tk.FLAT,
+            )
+            btn.pack(side=tk.LEFT, padx=1, pady=1)
+            btn.bind("<Enter>", lambda e, t=tooltip: self.status.set(t))
+            btn.bind("<Leave>", lambda e: self.status.set(self.status.get()))
+
+        self.toolbar.pack(side=tk.TOP, fill=tk.X, before=self.frame)
 
     def _build_editor(self, on_content_change, on_cursor_move, on_tab_change) -> None:
-        self.frame.pack(fill=tk.BOTH, expand=True)
-
         self.notebook.pack(fill=tk.BOTH, expand=True)
         self.notebook.bind("<<NotebookTabChanged>>", on_tab_change)
         self.notebook.bind("<Button-3>", self._open_tab_menu)
+        self.notebook.bind("<Button-1>", self._maybe_close_tab, add="+")
+        self.notebook.bind("<Button-2>", self._close_tab_with_middle_click, add="+")
+        self.notebook.bind("<Double-Button-1>", self._open_new_tab, add="+")
 
         self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
@@ -348,7 +379,7 @@ class NotepadUI:
         text.bind("<ButtonRelease>", on_cursor_move)
         text.bind("<Motion>", on_cursor_move)
 
-        self.notebook.add(frame, text=title)
+        self.notebook.add(frame, text=self._with_close_icon(title))
         tab_id = str(frame)
         self.notebook.select(frame)
         self.text_widgets[tab_id] = text
@@ -360,7 +391,7 @@ class NotepadUI:
 
     def set_tab_title(self, tab_id: str, title: str) -> None:
         if tab_id:
-            self.notebook.tab(tab_id, text=title)
+            self.notebook.tab(tab_id, text=self._with_close_icon(title))
 
     def select_tab(self, tab_id: str) -> None:
         if tab_id:
@@ -389,7 +420,7 @@ class NotepadUI:
 
     def toggle_toolbar(self, visible: bool) -> None:
         if visible:
-            self.toolbar.pack(side=tk.TOP, fill=tk.X)
+            self.toolbar.pack(side=tk.TOP, fill=tk.X, before=self.frame)
         else:
             self.toolbar.pack_forget()
         self.toolbar_var.set(visible)
@@ -423,6 +454,35 @@ class NotepadUI:
         self.notebook.select(tab_id)
         self.tab_menu.tk_popup(event.x_root, event.y_root)
 
+    def _maybe_close_tab(self, event) -> None:  # pragma: no cover - UI driven
+        try:
+            index = self.notebook.index(f"@{event.x},{event.y}")
+        except tk.TclError:
+            return
+
+        x, y, width, _height = self.notebook.bbox(index)
+        close_region_start = x + width - 24
+        if event.x >= close_region_start:
+            tab_id = self.notebook.tabs()[index]
+            self.notebook.select(tab_id)
+            self._on_close_tab()
+
+    def _close_tab_with_middle_click(self, event) -> None:  # pragma: no cover - UI driven
+        try:
+            index = self.notebook.index(f"@{event.x},{event.y}")
+        except tk.TclError:
+            return
+        tab_id = self.notebook.tabs()[index]
+        self.notebook.select(tab_id)
+        self._on_close_tab()
+
+    def _open_new_tab(self, event) -> None:  # pragma: no cover - UI driven
+        try:
+            self.notebook.index(f"@{event.x},{event.y}")
+        except tk.TclError:
+            # Double click on empty space opens a new tab
+            self._on_new_tab()
+
     def tab_order(self) -> list[str]:
         return list(self.notebook.tabs())
 
@@ -433,3 +493,92 @@ class NotepadUI:
         else:
             for path in recent:
                 self.recent_menu.add_command(label=path, command=lambda p=path: self._on_open_recent(p))
+
+    def update_commands_menu(self, commands: list[tuple[str, callable]]) -> None:
+        if not self.commands_menu:
+            return
+
+        self.commands_menu.delete(2, tk.END)
+        if not commands:
+            self.commands_menu.add_command(label="(no commands)", state=tk.DISABLED)
+            return
+
+        for name, action in commands[:15]:
+            self.commands_menu.add_command(label=name, command=action)
+
+    def prompt_for_font_choice(self, initial_family: str, initial_size: int) -> tuple[str, int] | None:
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Choose Font")
+        dialog.geometry("420x420")
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        tk.Label(dialog, text="Select a font optimized for code:").pack(anchor=tk.W, padx=10, pady=(10, 2))
+
+        sample_var = tk.StringVar(value="The quick brown fox jumps over the lazy dog. 0123456789")
+        preview = tk.Label(dialog, textvariable=sample_var, relief=tk.SUNKEN, padx=6, pady=6)
+        preview.pack(fill=tk.X, padx=10, pady=6)
+
+        container = tk.Frame(dialog)
+        container.pack(fill=tk.BOTH, expand=True, padx=10, pady=4)
+
+        scrollbar = tk.Scrollbar(container)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        listbox = tk.Listbox(container, yscrollcommand=scrollbar.set)
+        listbox.pack(fill=tk.BOTH, expand=True)
+        scrollbar.config(command=listbox.yview)
+
+        size_var = tk.IntVar(value=initial_size)
+        size_spin = tk.Spinbox(dialog, from_=8, to=48, textvariable=size_var, width=5)
+        size_spin.pack(anchor=tk.W, padx=10, pady=(4, 10))
+
+        code_friendly = self._code_friendly_fonts()
+        for family in code_friendly:
+            listbox.insert(tk.END, family)
+
+        def on_select(event=None):
+            selection = listbox.curselection()
+            if not selection:
+                return
+            family = listbox.get(selection[0])
+            preview.configure(font=(family, size_var.get()))
+
+        def accept():
+            selection = listbox.curselection()
+            if not selection:
+                dialog.destroy()
+                return
+            dialog.result = (listbox.get(selection[0]), int(size_var.get()))
+            dialog.destroy()
+
+        def cancel():
+            dialog.result = None
+            dialog.destroy()
+
+        listbox.bind("<<ListboxSelect>>", on_select)
+        preview.configure(font=(initial_family, initial_size))
+
+        btn_row = tk.Frame(dialog)
+        btn_row.pack(fill=tk.X, padx=10, pady=(4, 8))
+        tk.Button(btn_row, text="OK", command=accept).pack(side=tk.RIGHT, padx=4)
+        tk.Button(btn_row, text="Cancel", command=cancel).pack(side=tk.RIGHT, padx=4)
+
+        if initial_family in code_friendly:
+            idx = code_friendly.index(initial_family)
+            listbox.selection_set(idx)
+            listbox.see(idx)
+            preview.configure(font=(initial_family, initial_size))
+
+        dialog.wait_window()
+        return getattr(dialog, "result", None)
+
+    def _code_friendly_fonts(self) -> list[str]:
+        candidates = []
+        keywords = ("Mono", "Code", "Console", "Fixed", "Courier", "Hack", "Menlo", "Cascadia", "Jet")
+        for family in tkfont.families():
+            if any(key.lower() in family.lower() for key in keywords):
+                candidates.append(family)
+        return sorted(dict.fromkeys(candidates)) or ["Courier New", "Consolas", "Menlo", "Monaco"]
+
+    def _with_close_icon(self, title: str) -> str:
+        return f"{title}   ✕"
