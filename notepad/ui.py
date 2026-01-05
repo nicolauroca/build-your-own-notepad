@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import tkinter as tk
 from tkinter import font as tkfont
+from tkinter import ttk
 
 
 class NotepadUI:
@@ -35,10 +36,12 @@ class NotepadUI:
         on_toggle_status_bar,
         on_content_change,
         on_cursor_move,
+        on_tab_change,
     ) -> None:
         self.root = root
         self.frame = tk.Frame(self.root)
-        self.text = tk.Text(self.frame, wrap=tk.NONE, undo=True, font=text_font)
+        self.notebook = ttk.Notebook(self.frame)
+        self.text_widgets: dict[str, tk.Text] = {}
         self.status = tk.StringVar(value="Ln 1, Col 1")
         self.status_bar = tk.Label(self.root, textvariable=self.status, anchor=tk.W)
         self.word_wrap_var = tk.BooleanVar(value=False)
@@ -66,7 +69,7 @@ class NotepadUI:
             on_zoom_reset,
             on_toggle_status_bar,
         )
-        self._build_editor(on_content_change, on_cursor_move)
+        self._build_editor(on_content_change, on_cursor_move, on_tab_change)
 
     def _build_menu(
         self,
@@ -150,28 +153,53 @@ class NotepadUI:
         self.root.bind_all("<Control-minus>", lambda event: on_zoom_out())
         self.root.bind_all("<Control-0>", lambda event: on_zoom_reset())
 
-    def _build_editor(self, on_content_change, on_cursor_move) -> None:
+    def _build_editor(self, on_content_change, on_cursor_move, on_tab_change) -> None:
         self.frame.pack(fill=tk.BOTH, expand=True)
 
-        y_scrollbar = tk.Scrollbar(self.frame, orient=tk.VERTICAL)
-        y_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        x_scrollbar = tk.Scrollbar(self.frame, orient=tk.HORIZONTAL)
-        x_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
-
-        self.text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.text.configure(yscrollcommand=y_scrollbar.set, xscrollcommand=x_scrollbar.set)
-        y_scrollbar.configure(command=self.text.yview)
-        x_scrollbar.configure(command=self.text.xview)
-
-        self.text.bind("<KeyRelease>", on_content_change)
-        self.text.bind("<ButtonRelease>", on_cursor_move)
-        self.text.bind("<Motion>", on_cursor_move)
+        self.notebook.pack(fill=tk.BOTH, expand=True)
+        self.notebook.bind("<<NotebookTabChanged>>", on_tab_change)
 
         self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
+    def add_tab(self, title: str, text_font: tkfont.Font, on_content_change, on_cursor_move):
+        frame = tk.Frame(self.notebook)
+        y_scrollbar = tk.Scrollbar(frame, orient=tk.VERTICAL)
+        y_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        x_scrollbar = tk.Scrollbar(frame, orient=tk.HORIZONTAL)
+        x_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+
+        text = tk.Text(frame, wrap=tk.NONE, undo=True, font=text_font)
+        text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        text.configure(yscrollcommand=y_scrollbar.set, xscrollcommand=x_scrollbar.set)
+        y_scrollbar.configure(command=text.yview)
+        x_scrollbar.configure(command=text.xview)
+
+        text.bind("<KeyRelease>", on_content_change)
+        text.bind("<ButtonRelease>", on_cursor_move)
+        text.bind("<Motion>", on_cursor_move)
+
+        self.notebook.add(frame, text=title)
+        tab_id = str(frame)
+        self.notebook.select(frame)
+        self.text_widgets[tab_id] = text
+        return tab_id, text
+
+    def get_current_tab(self) -> tuple[str, tk.Text | None]:
+        tab_id = self.notebook.select()
+        return tab_id, self.text_widgets.get(tab_id)
+
+    def set_tab_title(self, tab_id: str, title: str) -> None:
+        if tab_id:
+            self.notebook.tab(tab_id, text=title)
+
+    def select_tab(self, tab_id: str) -> None:
+        if tab_id:
+            self.notebook.select(tab_id)
+
     def set_word_wrap(self, enabled: bool) -> None:
-        self.text.configure(wrap=tk.WORD if enabled else tk.NONE)
+        for text in self.text_widgets.values():
+            text.configure(wrap=tk.WORD if enabled else tk.NONE)
         self.word_wrap_var.set(enabled)
 
     def set_status(self, text: str) -> None:

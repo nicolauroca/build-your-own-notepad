@@ -27,5 +27,6 @@ This launches a window with a full-featured text editor. Highlights include:
 - **Format**: Toggle word wrap and choose fonts and sizes.
 - **View**: Zoom in/out/reset and show/hide the status bar.
 - **Editor**: Scrollable text area with horizontal/vertical scrollbars and line/column status indicator.
+- **Tabs**: Open multiple documents side by side in the same window.
 
 Keyboard shortcuts like Ctrl+N/Ctrl+O/Ctrl+S, Ctrl+Z/Ctrl+Y, and Ctrl++/Ctrl+-/Ctrl+0 are supported.
