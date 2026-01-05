@@ -73,6 +73,11 @@ class NotepadUI:
         self._open_command_palette = on_open_command_palette
         self.commands_menu: tk.Menu | None = None
 
+        # The editor frame must be packed before the toolbar so the toolbar can
+        # reliably position itself directly beneath the menu using the
+        # ``before`` parameter.
+        self.frame.pack(fill=tk.BOTH, expand=True)
+
         self._build_menu(
             on_new,
             on_new_window,
@@ -347,8 +352,6 @@ class NotepadUI:
         self.toolbar.pack(side=tk.TOP, fill=tk.X, before=self.frame)
 
     def _build_editor(self, on_content_change, on_cursor_move, on_tab_change) -> None:
-        self.frame.pack(fill=tk.BOTH, expand=True)
-
         self.notebook.pack(fill=tk.BOTH, expand=True)
         self.notebook.bind("<<NotebookTabChanged>>", on_tab_change)
         self.notebook.bind("<Button-3>", self._open_tab_menu)
