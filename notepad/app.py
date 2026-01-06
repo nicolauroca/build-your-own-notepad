@@ -35,8 +35,9 @@ class NotepadApp:
 
         self.word_wrap = False
         self.toolbar_visible = True
+        self.theme_mode = "dark"
 
-        self.font = tkfont.Font(family="Arial", size=12)
+        self.font = self._select_editor_font()
 
         self.closed_documents: list[dict[str, str | None]] = []
         self.recent_files: list[str] = []
@@ -88,6 +89,7 @@ class NotepadApp:
             on_cursor_move=self.update_status,
             on_tab_change=self.on_tab_change,
             on_open_command_palette=self.open_command_palette,
+            on_change_theme=self.change_theme,
         )
 
         self.documents: dict[str, Document] = {}
@@ -118,6 +120,25 @@ class NotepadApp:
         self.update_title()
         self.update_status()
         return document
+
+    def _select_editor_font(self) -> tkfont.Font:
+        """Pick a modern, developer-friendly font with fallbacks."""
+
+        preferred = (
+            "JetBrains Mono",
+            "Cascadia Code",
+            "Fira Code",
+            "IBM Plex Mono",
+            "Menlo",
+            "Consolas",
+            "SF Mono",
+        )
+        available = set(tkfont.families())
+        for family in preferred:
+            if family in available:
+                return tkfont.Font(family=family, size=13)
+
+        return tkfont.Font(family="Courier New", size=12)
 
     def _get_document_for_widget(self, widget: tk.Widget) -> Document | None:
         for document in self.documents.values():
@@ -164,12 +185,17 @@ class NotepadApp:
         self.ui.set_selected_encoding(document.encoding)
         self.ui.set_status(f"{document.encoding} | Ln {line}, Col {column + 1}")
 
+    def change_theme(self, mode: str) -> None:
+        self.theme_mode = mode
+        self.ui.set_theme(mode)
+
     # Command palette helpers
     def _register_command(self, name: str, action, icon: str) -> None:
         self.command_actions.append({"name": name, "action": action, "icon": icon})
 
     def _register_command_actions(self) -> None:
         self.command_actions.clear()
+        self._register_command("Toggle light/dark mode", self._toggle_theme_mode, "🌓")
         self._register_command("Uppercase selection", self.uppercase_selection, "🔠")
         self._register_command("Lowercase selection", self.lowercase_selection, "🔡")
         self._register_command("Title Case selection", self.title_case_selection, "🔤")
@@ -226,6 +252,10 @@ class NotepadApp:
         self._register_command("Strip BOM", self.strip_bom, "🧽")
         self._register_command("Convert quotes to double", self.normalize_double_quotes, "💬")
         self._register_command("Convert quotes to single", self.normalize_single_quotes, "🗨️")
+
+    def _toggle_theme_mode(self) -> None:
+        next_mode = "light" if self.theme_mode == "dark" else "dark"
+        self.change_theme(next_mode)
 
     def _encoding_codec(self, label: str) -> str:
         codecs = {
