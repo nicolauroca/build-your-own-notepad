@@ -513,9 +513,8 @@ class NotepadUI:
         self.notebook.pack(fill=tk.BOTH, expand=True)
         self.notebook.bind("<<NotebookTabChanged>>", on_tab_change)
         self.notebook.bind("<Button-3>", self._open_tab_menu)
-        self.notebook.bind("<Button-1>", self._maybe_close_tab, add="+")
         self.notebook.bind("<Button-2>", self._close_tab_with_middle_click, add="+")
-        self.notebook.bind("<Double-Button-1>", self._open_new_tab, add="+")
+        self.notebook.bind("<Double-Button-1>", self._handle_double_click, add="+")
 
         self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
@@ -645,12 +644,16 @@ class NotepadUI:
         self.notebook.select(tab_id)
         self._on_close_tab()
 
-    def _open_new_tab(self, event) -> None:  # pragma: no cover - UI driven
+    def _handle_double_click(self, event) -> None:  # pragma: no cover - UI driven
         try:
-            self.notebook.index(f"@{event.x},{event.y}")
+            index = self.notebook.index(f"@{event.x},{event.y}")
         except tk.TclError:
-            # Double click on empty space opens a new tab
             self._on_new_tab()
+            return
+
+        tab_id = self.notebook.tabs()[index]
+        self.notebook.select(tab_id)
+        self._on_close_tab()
 
     def tab_order(self) -> list[str]:
         return list(self.notebook.tabs())
@@ -751,4 +754,4 @@ class NotepadUI:
         return sorted(dict.fromkeys(candidates)) or ["Courier New", "Consolas", "Menlo", "Monaco"]
 
     def _with_close_icon(self, title: str) -> str:
-        return f"{title}   ✕"
+        return title
