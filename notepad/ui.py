@@ -56,19 +56,52 @@ class NotepadUI:
         on_cursor_move,
         on_tab_change,
         on_open_command_palette,
+        on_change_theme,
     ) -> None:
         self.root = root
-        self.frame = tk.Frame(self.root)
-        self.notebook = ttk.Notebook(self.frame)
+        self.themes = {
+            "dark": {
+                "background": "#0b1221",
+                "panel": "#0f172a",
+                "card": "#111827",
+                "border": "#1f2937",
+                "accent": "#7c3aed",
+                "accent_alt": "#6366f1",
+                "text": "#e5e7eb",
+                "muted": "#9ca3af",
+                "selection": "#312e81",
+            },
+            "light": {
+                "background": "#f7f7fb",
+                "panel": "#ececf5",
+                "card": "#ffffff",
+                "border": "#d7d7e0",
+                "accent": "#2563eb",
+                "accent_alt": "#1d4ed8",
+                "text": "#1f2937",
+                "muted": "#4b5563",
+                "selection": "#c7d2fe",
+            },
+        }
+        self.theme_var = tk.StringVar(value="dark")
+        self.colors = self.themes[self.theme_var.get()]
+
+        self._configure_style()
+
+        self.frame = ttk.Frame(self.root, padding=(12, 10), style="Background.TFrame")
+        self.notebook = ttk.Notebook(self.frame, style="Modern.TNotebook")
         self.text_widgets: dict[str, tk.Text] = {}
         self.status = tk.StringVar(value="Ln 1, Col 1")
-        self.status_bar = tk.Label(self.root, textvariable=self.status, anchor=tk.W)
+        self.status_bar = ttk.Label(
+            self.root, textvariable=self.status, anchor=tk.W, style="Status.TLabel"
+        )
         self.word_wrap_var = tk.BooleanVar(value=False)
         self.status_bar_var = tk.BooleanVar(value=True)
         self.toolbar_var = tk.BooleanVar(value=True)
         self.encoding_var = tk.StringVar(value="UTF-8")
+        self.on_change_theme = on_change_theme
 
-        self.toolbar = tk.Frame(self.root, bd=1, relief=tk.RAISED)
+        self.toolbar = ttk.Frame(self.root, style="Toolbar.TFrame")
         self._on_open_recent = on_open_recent
         self._on_close_tab = on_close_tab
         self._on_new_tab = on_new
@@ -120,6 +153,7 @@ class NotepadUI:
             on_set_encoding,
             on_convert_encoding,
             on_open_command_palette,
+            on_change_theme,
         )
         self._build_toolbar(
             on_new,
@@ -180,6 +214,7 @@ class NotepadUI:
         on_set_encoding,
         on_convert_encoding,
         on_open_command_palette,
+        on_change_theme,
     ) -> None:
         menubar = tk.Menu(self.root)
 
@@ -240,6 +275,19 @@ class NotepadUI:
         )
         view_menu.add_checkbutton(
             label="Toolbar", command=on_toggle_toolbar, variable=self.toolbar_var
+        )
+        view_menu.add_separator()
+        view_menu.add_radiobutton(
+            label="Dark Mode",
+            value="dark",
+            variable=self.theme_var,
+            command=lambda: on_change_theme("dark"),
+        )
+        view_menu.add_radiobutton(
+            label="Light Mode",
+            value="light",
+            variable=self.theme_var,
+            command=lambda: on_change_theme("light"),
         )
 
         encoding_menu = tk.Menu(menubar, tearoff=0)
@@ -304,6 +352,108 @@ class NotepadUI:
             on_duplicate_tab,
         )
 
+    def _text_theme_kwargs(self) -> dict[str, object]:
+        return {
+            "background": self.colors["card"],
+            "foreground": self.colors["text"],
+            "insertbackground": self.colors["accent_alt"],
+            "selectbackground": self.colors["selection"],
+            "selectforeground": self.colors["text"],
+            "highlightthickness": 0,
+            "bd": 0,
+            "padx": 10,
+            "pady": 8,
+            "spacing2": 4,
+        }
+
+    def _configure_style(self) -> None:
+        self.root.configure(bg=self.colors["background"])
+        base_font = tkfont.nametofont("TkDefaultFont")
+        base_font.configure(family="Segoe UI", size=10)
+        icon_font_family = "Segoe UI Emoji" if "Segoe UI Emoji" in tkfont.families() else base_font.actual("family")
+        self.icon_font = tkfont.Font(family=icon_font_family, size=12)
+        strong_font = base_font.copy()
+        strong_font.configure(weight="bold")
+        small_font = base_font.copy()
+        small_font.configure(size=9)
+        style = ttk.Style(self.root)
+        style.theme_use("clam")
+
+        style.configure("Background.TFrame", background=self.colors["background"])
+        style.configure("Card.TFrame", background=self.colors["card"], borderwidth=0)
+        style.configure("Toolbar.TFrame", background=self.colors["panel"], borderwidth=0)
+        style.configure(
+            "Toolbar.TButton",
+            background=self.colors["panel"],
+            foreground=self.colors["text"],
+            padding=(10, 7),
+            borderwidth=0,
+            font=self.icon_font,
+        )
+        style.map(
+            "Toolbar.TButton",
+            background=[("active", self.colors["accent"]), ("pressed", self.colors["accent_alt"])],
+            foreground=[("active", self.colors["text"])],
+        )
+
+        style.configure(
+            "Modern.TNotebook",
+            background=self.colors["background"],
+            borderwidth=0,
+            tabmargins=(10, 6, 10, 0),
+        )
+        style.configure(
+            "Modern.TNotebook.Tab",
+            background=self.colors["card"],
+            foreground=self.colors["muted"],
+            padding=(14, 9),
+            font=strong_font,
+            borderwidth=0,
+        )
+        style.map(
+            "Modern.TNotebook.Tab",
+            background=[("selected", self.colors["accent"]), ("active", self.colors["panel"])],
+            foreground=[("selected", self.colors["text"]), ("active", self.colors["text"])],
+        )
+
+        style.configure(
+            "Status.TLabel",
+            background=self.colors["panel"],
+            foreground=self.colors["muted"],
+            padding=(12, 6),
+            font=small_font,
+        )
+        style.configure(
+            "Horizontal.TScrollbar",
+            background=self.colors["panel"],
+            troughcolor=self.colors["card"],
+            bordercolor=self.colors["panel"],
+            arrowcolor=self.colors["text"],
+        )
+        style.configure(
+            "Vertical.TScrollbar",
+            background=self.colors["panel"],
+            troughcolor=self.colors["card"],
+            bordercolor=self.colors["panel"],
+            arrowcolor=self.colors["text"],
+        )
+
+    def set_theme(self, mode: str) -> None:
+        if mode not in self.themes:
+            return
+
+        self.theme_var.set(mode)
+        self.colors = self.themes[mode]
+        self._configure_style()
+        self.frame.configure(style="Background.TFrame")
+        self.toolbar.configure(style="Toolbar.TFrame")
+        self.status_bar.configure(style="Status.TLabel")
+        self.notebook.configure(style="Modern.TNotebook")
+        for child in self.toolbar.winfo_children():
+            child.configure(style="Toolbar.TButton")
+        for text in self.text_widgets.values():
+            text.configure(**self._text_theme_kwargs())
+
     def set_selected_encoding(self, label: str) -> None:
         """Highlight the active encoding in the Encoding menu."""
 
@@ -345,20 +495,18 @@ class NotepadUI:
         ]
 
         for symbol, tooltip, command in buttons:
-            btn = tk.Button(
+            btn = ttk.Button(
                 self.toolbar,
                 text=symbol,
                 command=command,
-                padx=6,
-                pady=4,
-                font=("Segoe UI Emoji", 11),
-                relief=tk.FLAT,
+                style="Toolbar.TButton",
+                width=3,
             )
-            btn.pack(side=tk.LEFT, padx=1, pady=1)
+            btn.pack(side=tk.LEFT, padx=3, pady=6)
             btn.bind("<Enter>", lambda e, t=tooltip: self.status.set(t))
             btn.bind("<Leave>", lambda e: self.status.set(self.status.get()))
 
-        self.toolbar.pack(side=tk.TOP, fill=tk.X, before=self.frame)
+        self.toolbar.pack(side=tk.TOP, fill=tk.X, before=self.frame, pady=(4, 2))
 
     def _build_editor(self, on_content_change, on_cursor_move, on_tab_change) -> None:
         self.notebook.pack(fill=tk.BOTH, expand=True)
@@ -371,15 +519,21 @@ class NotepadUI:
         self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
     def add_tab(self, title: str, text_font: tkfont.Font, on_content_change, on_cursor_move):
-        frame = tk.Frame(self.notebook)
-        y_scrollbar = tk.Scrollbar(frame, orient=tk.VERTICAL)
+        frame = ttk.Frame(self.notebook, style="Card.TFrame")
+        y_scrollbar = ttk.Scrollbar(frame, orient=tk.VERTICAL)
         y_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        x_scrollbar = tk.Scrollbar(frame, orient=tk.HORIZONTAL)
+        x_scrollbar = ttk.Scrollbar(frame, orient=tk.HORIZONTAL)
         x_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
 
-        text = tk.Text(frame, wrap=tk.NONE, undo=True, font=text_font)
-        text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        text = tk.Text(
+            frame,
+            wrap=tk.NONE,
+            undo=True,
+            font=text_font,
+            **self._text_theme_kwargs(),
+        )
+        text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(2, 0), pady=(2, 0))
         text.configure(yscrollcommand=y_scrollbar.set, xscrollcommand=x_scrollbar.set)
         y_scrollbar.configure(command=text.yview)
         x_scrollbar.configure(command=text.xview)
@@ -469,9 +623,12 @@ class NotepadUI:
         except tk.TclError:
             return
 
-        x, y, width, _height = self.notebook.bbox(index)
+        x, y, width, height = self.notebook.bbox(index)
+        if not (x <= event.x <= x + width and y <= event.y <= y + height):
+            return
+
         close_region_start = x + width - 24
-        if event.x >= close_region_start:
+        if close_region_start <= event.x <= x + width:
             tab_id = self.notebook.tabs()[index]
             self.notebook.select(tab_id)
             self._on_close_tab()
