@@ -628,11 +628,13 @@ class NotepadUI:
         if not (x <= event.x <= x + width and y <= event.y <= y + height):
             return
 
-        close_region_start = x + width - max(24, self.tab_font.measure("✕") + 12)
+        close_icon_width = max(24, self.tab_font.measure("✕") + 12)
+        close_region_start = x + width - close_icon_width
         if close_region_start <= event.x <= x + width:
             tab_id = self.notebook.tabs()[index]
             self.notebook.select(tab_id)
             self._on_close_tab()
+            return "break"
 
     def _close_tab_with_middle_click(self, event) -> None:  # pragma: no cover - UI driven
         try:
