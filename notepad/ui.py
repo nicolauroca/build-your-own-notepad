@@ -374,6 +374,7 @@ class NotepadUI:
         self.icon_font = tkfont.Font(family=icon_font_family, size=12)
         strong_font = base_font.copy()
         strong_font.configure(weight="bold")
+        self.tab_font = strong_font
         small_font = base_font.copy()
         small_font.configure(size=9)
         style = ttk.Style(self.root)
@@ -627,7 +628,7 @@ class NotepadUI:
         if not (x <= event.x <= x + width and y <= event.y <= y + height):
             return
 
-        close_region_start = x + width - 24
+        close_region_start = x + width - max(24, self.tab_font.measure("✕") + 12)
         if close_region_start <= event.x <= x + width:
             tab_id = self.notebook.tabs()[index]
             self.notebook.select(tab_id)
