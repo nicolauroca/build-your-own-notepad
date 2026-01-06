@@ -22,7 +22,7 @@ class Document:
         self.text = text_widget
         self.file_path: str | None = None
         self.dirty = False
-        self.language = "Plain Text"
+        self.encoding = "UTF-8"
 
 
 class NotepadApp:
@@ -41,7 +41,7 @@ class NotepadApp:
         self.closed_documents: list[dict[str, str | None]] = []
         self.recent_files: list[str] = []
         self.last_search_query: str | None = None
-        self.command_actions: list[tuple[str, callable]] = []
+        self.command_actions: list[dict[str, object]] = []
 
         self.ui = NotepadUI(
             self.root,
@@ -82,7 +82,8 @@ class NotepadApp:
             on_find_previous=self.find_previous,
             on_replace=self.replace,
             on_go_to=self.go_to,
-            on_set_language=self.set_language,
+            on_set_encoding=self.set_encoding,
+            on_convert_encoding=self.convert_encoding,
             on_content_change=self.on_content_change,
             on_cursor_move=self.update_status,
             on_tab_change=self.on_tab_change,
@@ -159,79 +160,103 @@ class NotepadApp:
 
         index = document.text.index(tk.INSERT)
         line, column = (int(num) for num in index.split("."))
-        self.ui.set_status(f"{document.language} | Ln {line}, Col {column + 1}")
+        self.ui.set_status(f"{document.encoding} | Ln {line}, Col {column + 1}")
 
     # Command palette helpers
-    def _register_command(self, name: str, action) -> None:
-        self.command_actions.append((name, action))
+    def _register_command(self, name: str, action, icon: str) -> None:
+        self.command_actions.append({"name": name, "action": action, "icon": icon})
 
     def _register_command_actions(self) -> None:
         self.command_actions.clear()
-        self._register_command("Uppercase selection", self.uppercase_selection)
-        self._register_command("Lowercase selection", self.lowercase_selection)
-        self._register_command("Title Case selection", self.title_case_selection)
-        self._register_command("Sentence case selection", self.sentence_case_selection)
-        self._register_command("Swap case", self.swap_case_selection)
-        self._register_command("Trim trailing whitespace", self.trim_trailing_whitespace)
-        self._register_command("Trim leading whitespace", self.trim_leading_whitespace)
-        self._register_command("Trim surrounding whitespace", self.trim_borders)
-        self._register_command("Convert tabs to spaces", self.convert_tabs_to_spaces)
-        self._register_command("Convert spaces to tabs", self.convert_spaces_to_tabs)
-        self._register_command("Indent with 2 spaces", self.indent_with_two_spaces)
-        self._register_command("Indent with 4 spaces", self.indent_with_four_spaces)
-        self._register_command("Toggle comment", self.toggle_comment)
-        self._register_command("Comment selection", self.comment_selection)
-        self._register_command("Uncomment selection", self.uncomment_selection)
-        self._register_command("Duplicate line/selection", self.duplicate_selection_or_line)
-        self._register_command("Duplicate above", self.duplicate_above)
-        self._register_command("Duplicate below", self.duplicate_below)
-        self._register_command("Delete current line", self.delete_line)
-        self._register_command("Move line up", self.move_line_up)
-        self._register_command("Move line down", self.move_line_down)
-        self._register_command("Join lines", self.join_lines)
-        self._register_command("Split selection by commas", self.split_lines_by_commas)
-        self._register_command("Sort lines ascending", self.sort_lines_ascending)
-        self._register_command("Sort lines descending", self.sort_lines_descending)
-        self._register_command("Reverse lines", self.reverse_lines)
-        self._register_command("Unique lines", self.unique_lines)
-        self._register_command("Remove blank lines", self.remove_blank_lines)
-        self._register_command("Wrap with ( )", self.wrap_with_parentheses)
-        self._register_command("Wrap with [ ]", self.wrap_with_brackets)
-        self._register_command("Wrap with { }", self.wrap_with_braces)
-        self._register_command("Wrap with single quotes", self.wrap_with_single_quotes)
-        self._register_command("Wrap with double quotes", self.wrap_with_double_quotes)
-        self._register_command("Wrap with backticks", self.wrap_with_backticks)
-        self._register_command("Convert to snake_case", self.to_snake_case)
-        self._register_command("Convert to camelCase", self.to_camel_case)
-        self._register_command("Convert to PascalCase", self.to_pascal_case)
-        self._register_command("Convert to kebab-case", self.to_kebab_case)
-        self._register_command("Convert to UPPER_SNAKE", self.to_upper_snake_case)
-        self._register_command("Insert TODO comment", self.insert_todo_comment)
-        self._register_command("Insert ISO timestamp", self.insert_iso_timestamp)
-        self._register_command("Add line numbers", self.add_line_numbers)
-        self._register_command("Remove line numbers", self.remove_line_numbers)
-        self._register_command("Align assignments", self.align_assignments)
-        self._register_command("Toggle bullet list", self.toggle_bullet_list)
-        self._register_command("Toggle numbered list", self.toggle_numbered_list)
-        self._register_command("Transpose characters", self.transpose_characters)
-        self._register_command("Select current line", self.select_current_line)
-        self._register_command("Select word", self.select_word)
-        self._register_command("Go to matching bracket", self.go_to_matching_bracket)
-        self._register_command("Sort by line length", self.sort_by_line_length)
-        self._register_command("Collapse multiple spaces", self.collapse_spaces)
-        self._register_command("Pad numbers with zeros", self.pad_numbers)
-        self._register_command("Strip BOM", self.strip_bom)
-        self._register_command("Convert quotes to double", self.normalize_double_quotes)
-        self._register_command("Convert quotes to single", self.normalize_single_quotes)
+        self._register_command("Uppercase selection", self.uppercase_selection, "🔠")
+        self._register_command("Lowercase selection", self.lowercase_selection, "🔡")
+        self._register_command("Title Case selection", self.title_case_selection, "🔤")
+        self._register_command("Sentence case selection", self.sentence_case_selection, "✒️")
+        self._register_command("Swap case", self.swap_case_selection, "🔄")
+        self._register_command("Trim trailing whitespace", self.trim_trailing_whitespace, "✂️")
+        self._register_command("Trim leading whitespace", self.trim_leading_whitespace, "🧹")
+        self._register_command("Trim surrounding whitespace", self.trim_borders, "🪄")
+        self._register_command("Convert tabs to spaces", self.convert_tabs_to_spaces, "↔️")
+        self._register_command("Convert spaces to tabs", self.convert_spaces_to_tabs, "↕️")
+        self._register_command("Indent with 2 spaces", self.indent_with_two_spaces, "↪️")
+        self._register_command("Indent with 4 spaces", self.indent_with_four_spaces, "⤵️")
+        self._register_command("Toggle comment", self.toggle_comment, "💬")
+        self._register_command("Comment selection", self.comment_selection, "🗣️")
+        self._register_command("Uncomment selection", self.uncomment_selection, "🔇")
+        self._register_command("Duplicate line/selection", self.duplicate_selection_or_line, "📑")
+        self._register_command("Duplicate above", self.duplicate_above, "⬆️")
+        self._register_command("Duplicate below", self.duplicate_below, "⬇️")
+        self._register_command("Delete current line", self.delete_line, "🗑️")
+        self._register_command("Move line up", self.move_line_up, "🔼")
+        self._register_command("Move line down", self.move_line_down, "🔽")
+        self._register_command("Join lines", self.join_lines, "📎")
+        self._register_command("Split selection by commas", self.split_lines_by_commas, "🍴")
+        self._register_command("Sort lines ascending", self.sort_lines_ascending, "⬆")
+        self._register_command("Sort lines descending", self.sort_lines_descending, "⬇")
+        self._register_command("Reverse lines", self.reverse_lines, "🔁")
+        self._register_command("Unique lines", self.unique_lines, "✅")
+        self._register_command("Remove blank lines", self.remove_blank_lines, "🚫")
+        self._register_command("Wrap with ( )", self.wrap_with_parentheses, "( )")
+        self._register_command("Wrap with [ ]", self.wrap_with_brackets, "[ ]")
+        self._register_command("Wrap with { }", self.wrap_with_braces, "{ }")
+        self._register_command("Wrap with single quotes", self.wrap_with_single_quotes, "' '")
+        self._register_command("Wrap with double quotes", self.wrap_with_double_quotes, '" "')
+        self._register_command("Wrap with backticks", self.wrap_with_backticks, "` `")
+        self._register_command("Convert to snake_case", self.to_snake_case, "🐍")
+        self._register_command("Convert to camelCase", self.to_camel_case, "🐪")
+        self._register_command("Convert to PascalCase", self.to_pascal_case, "🅿️")
+        self._register_command("Convert to kebab-case", self.to_kebab_case, "🥙")
+        self._register_command("Convert to UPPER_SNAKE", self.to_upper_snake_case, "🔺")
+        self._register_command("Insert TODO comment", self.insert_todo_comment, "✅")
+        self._register_command("Insert ISO timestamp", self.insert_iso_timestamp, "⏱️")
+        self._register_command("Add line numbers", self.add_line_numbers, "🔢")
+        self._register_command("Remove line numbers", self.remove_line_numbers, "🚮")
+        self._register_command("Align assignments", self.align_assignments, "📐")
+        self._register_command("Toggle bullet list", self.toggle_bullet_list, "•")
+        self._register_command("Toggle numbered list", self.toggle_numbered_list, "1️⃣")
+        self._register_command("Transpose characters", self.transpose_characters, "🔀")
+        self._register_command("Select current line", self.select_current_line, "📍")
+        self._register_command("Select word", self.select_word, "🪄")
+        self._register_command("Go to matching bracket", self.go_to_matching_bracket, "📏")
+        self._register_command("Sort by line length", self.sort_by_line_length, "📏")
+        self._register_command("Collapse multiple spaces", self.collapse_spaces, "🧽")
+        self._register_command("Pad numbers with zeros", self.pad_numbers, "0️⃣")
+        self._register_command("Strip BOM", self.strip_bom, "🧽")
+        self._register_command("Convert quotes to double", self.normalize_double_quotes, "💬")
+        self._register_command("Convert quotes to single", self.normalize_single_quotes, "🗨️")
+
+    def _encoding_codec(self, label: str) -> str:
+        codecs = {
+            "UTF-8": "utf-8",
+            "UTF-8-BOM": "utf-8-sig",
+            "UTF-16 LE": "utf-16-le",
+            "UTF-16 BE": "utf-16-be",
+            "ANSI": "cp1252",
+        }
+        return codecs.get(label, "utf-8")
 
     def open_command_palette(self) -> None:  # pragma: no cover - UI driven
         palette = tk.Toplevel(self.root)
         palette.title("Command Palette")
-        palette.geometry("420x480")
+        palette.geometry("440x520")
         palette.transient(self.root)
         palette.grab_set()
 
-        tk.Label(palette, text="Search command:").pack(anchor=tk.W, padx=10, pady=(10, 2))
+        tk.Label(palette, text="Scope:").pack(anchor=tk.W, padx=10, pady=(10, 2))
+        scope_var = tk.StringVar(value="active")
+        scope_frame = tk.Frame(palette)
+        scope_frame.pack(fill=tk.X, padx=10)
+        tk.Radiobutton(scope_frame, text="Selected text", variable=scope_var, value="selection").pack(
+            side=tk.LEFT, padx=4
+        )
+        tk.Radiobutton(scope_frame, text="Active document", variable=scope_var, value="active").pack(
+            side=tk.LEFT, padx=4
+        )
+        tk.Radiobutton(scope_frame, text="All tabs", variable=scope_var, value="all").pack(
+            side=tk.LEFT, padx=4
+        )
+
+        tk.Label(palette, text="Search command:").pack(anchor=tk.W, padx=10, pady=(8, 2))
         query_var = tk.StringVar()
         entry = tk.Entry(palette, textvariable=query_var)
         entry.pack(fill=tk.X, padx=10)
@@ -245,9 +270,10 @@ class NotepadApp:
         def refresh_list(*_):
             query = query_var.get().lower()
             listbox.delete(0, tk.END)
-            for name, _action in self.command_actions:
-                if query in name.lower():
-                    listbox.insert(tk.END, name)
+            for command in self.command_actions:
+                label = f"{command['icon']} {command['name']}"
+                if query in command["name"].lower():
+                    listbox.insert(tk.END, label)
             if listbox.size():
                 listbox.selection_set(0)
 
@@ -255,11 +281,12 @@ class NotepadApp:
             if not listbox.size():
                 return
             selection = listbox.get(listbox.curselection())
-            for name, action in self.command_actions:
-                if name == selection:
-                    action()
+            for command in self.command_actions:
+                label = f"{command['icon']} {command['name']}"
+                if label == selection:
+                    if self._run_command_with_scope(command["action"], scope_var.get()):
+                        palette.destroy()
                     break
-            palette.destroy()
 
         entry.bind("<KeyRelease>", refresh_list)
         listbox.bind("<Double-Button-1>", run_selected)
@@ -267,6 +294,27 @@ class NotepadApp:
         entry.focus_set()
         refresh_list()
         palette.wait_window()
+
+    def _run_command_with_scope(self, action, scope: str) -> bool:
+        if scope == "selection":
+            document = self._current_document()
+            if not self._selection_range(document.text):
+                messagebox.showinfo("Command Palette", "Seleccione texto para usar esta acción.")
+                return False
+            action()
+            return True
+
+        if scope == "all":
+            current_tab, _widget = self.ui.get_current_tab()
+            for tab_id in self.ui.tab_order():
+                self.ui.select_tab(tab_id)
+                action()
+            self.ui.select_tab(current_tab)
+            self.update_status()
+            return True
+
+        action()
+        return True
 
 
     def new_file(self) -> None:  # pragma: no cover - UI driven
@@ -315,6 +363,7 @@ class NotepadApp:
         document.text.insert(tk.END, content)
         document.file_path = file_path
         document.dirty = False
+        document.encoding = "UTF-8"
         self._add_recent_file(file_path)
         self.update_title()
 
@@ -323,7 +372,9 @@ class NotepadApp:
 
         document = document or self._current_document()
         content = document.text.get("1.0", "end-1c")
-        file_path = file_ops.save_file(content, document.file_path)
+        file_path = file_ops.save_file(
+            content, document.file_path, encoding=self._encoding_codec(document.encoding)
+        )
         if file_path is None:
             return False
 
@@ -338,7 +389,7 @@ class NotepadApp:
 
         document = self._current_document()
         content = document.text.get("1.0", "end-1c")
-        file_path = file_ops.save_file_as(content)
+        file_path = file_ops.save_file_as(content, encoding=self._encoding_codec(document.encoding))
         if file_path is None:
             return
 
@@ -362,7 +413,7 @@ class NotepadApp:
             return
 
         try:
-            with open(document.file_path, "r", encoding="utf-8") as file:
+            with open(document.file_path, "r", encoding=self._encoding_codec(document.encoding)) as file:
                 content = file.read()
         except OSError as exc:
             messagebox.showerror("Reload", f"Could not reload file:\n{exc}")
@@ -556,11 +607,33 @@ class NotepadApp:
         document.text.see(tk.INSERT)
         self.update_status()
 
-    def set_language(self, language: str) -> None:  # pragma: no cover - UI driven
-        """Label the current document with a language hint."""
+    def set_encoding(self, label: str) -> None:  # pragma: no cover - UI driven
+        """Update the encoding metadata for the active document."""
 
         document = self._current_document()
-        document.language = language
+        document.encoding = label
+        self.update_status()
+        self.update_title()
+
+    def convert_encoding(self, label: str) -> None:  # pragma: no cover - UI driven
+        """Transcode the document content and persist the chosen encoding."""
+
+        document = self._current_document()
+        target_codec = self._encoding_codec(label)
+        content = document.text.get("1.0", "end-1c")
+        try:
+            converted = content.encode(target_codec, errors="strict").decode(target_codec)
+        except UnicodeError:
+            messagebox.showerror(
+                "Encoding",
+                f"Content contains characters incompatible with {label}.",
+            )
+            return
+
+        document.text.delete("1.0", tk.END)
+        document.text.insert("1.0", converted)
+        document.encoding = label
+        document.dirty = True
         self.update_status()
         self.update_title()
 
@@ -570,8 +643,8 @@ class NotepadApp:
         for document in self.documents.values():
             name = self._document_display_name(document)
             dirty_marker = " *" if document.dirty else ""
-            language_prefix = f"[{document.language}] " if document.language else ""
-            self.ui.set_tab_title(document.tab_id, f"{language_prefix}{name}{dirty_marker}")
+            encoding_prefix = f"[{document.encoding}] " if document.encoding else ""
+            self.ui.set_tab_title(document.tab_id, f"{encoding_prefix}{name}{dirty_marker}")
 
         current_document = self._current_document()
         name = self._document_display_name(current_document)
@@ -625,7 +698,7 @@ class NotepadApp:
         clone = self._add_blank_document(title=self._document_display_name(document))
         content = document.text.get("1.0", "end-1c")
         clone.text.insert("1.0", content)
-        clone.language = document.language
+        clone.encoding = document.encoding
         clone.dirty = document.dirty
         self.update_title()
 
@@ -640,7 +713,7 @@ class NotepadApp:
         document = self._add_blank_document(title=state.get("title", "Untitled"))
         document.text.insert("1.0", state.get("content", ""))
         document.file_path = state.get("file_path")
-        document.language = state.get("language", "Plain Text")
+        document.encoding = state.get("encoding", "UTF-8")
         document.dirty = False
         self.update_title()
 
@@ -661,7 +734,7 @@ class NotepadApp:
             "title": self._document_display_name(document),
             "content": document.text.get("1.0", "end-1c"),
             "file_path": document.file_path,
-            "language": document.language,
+            "encoding": document.encoding,
         }
         self.closed_documents.append(snapshot)
 

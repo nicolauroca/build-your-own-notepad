@@ -38,7 +38,7 @@ def open_file() -> tuple[str | None, str | None]:
     return content, file_path
 
 
-def save_file(content: str, file_path: str | None) -> str | None:
+def save_file(content: str, file_path: str | None, *, encoding: str = "utf-8") -> str | None:
     """
     Save ``content`` to ``file_path`` if provided, otherwise prompt the user.
 
@@ -60,7 +60,7 @@ def save_file(content: str, file_path: str | None) -> str | None:
         return save_file_as(content)
 
     try:
-        with open(file_path, "w", encoding="utf-8") as file:
+        with open(file_path, "w", encoding=encoding) as file:
             file.write(content)
     except OSError as exc:  # pragma: no cover - UI interaction is manual
         messagebox.showerror("Save File", f"Could not save file:\n{exc}")
@@ -69,7 +69,7 @@ def save_file(content: str, file_path: str | None) -> str | None:
     return file_path
 
 
-def save_file_as(content: str) -> str | None:
+def save_file_as(content: str, *, encoding: str = "utf-8") -> str | None:
     """Prompt the user for a path and save ``content`` to that location."""
 
     file_path = filedialog.asksaveasfilename(
@@ -86,7 +86,7 @@ def save_file_as(content: str) -> str | None:
         return None
 
     try:
-        with open(file_path, "w", encoding="utf-8") as file:
+        with open(file_path, "w", encoding=encoding) as file:
             file.write(content)
     except OSError as exc:  # pragma: no cover - UI interaction is manual
         messagebox.showerror("Save File", f"Could not save file:\n{exc}")

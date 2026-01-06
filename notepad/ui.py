@@ -50,7 +50,8 @@ class NotepadUI:
         on_find_previous,
         on_replace,
         on_go_to,
-        on_set_language,
+        on_set_encoding,
+        on_convert_encoding,
         on_content_change,
         on_cursor_move,
         on_tab_change,
@@ -115,7 +116,8 @@ class NotepadUI:
             on_find_previous,
             on_replace,
             on_go_to,
-            on_set_language,
+            on_set_encoding,
+            on_convert_encoding,
             on_open_command_palette,
         )
         self._build_toolbar(
@@ -174,7 +176,8 @@ class NotepadUI:
         on_find_previous,
         on_replace,
         on_go_to,
-        on_set_language,
+        on_set_encoding,
+        on_convert_encoding,
         on_open_command_palette,
     ) -> None:
         menubar = tk.Menu(self.root)
@@ -238,21 +241,18 @@ class NotepadUI:
             label="Toolbar", command=on_toggle_toolbar, variable=self.toolbar_var
         )
 
-        language_menu = tk.Menu(menubar, tearoff=0)
-        for language in ["Plain Text", "Python", "JavaScript", "HTML", "CSS", "Markdown", "JSON"]:
-            language_menu.add_radiobutton(label=language, command=lambda l=language: on_set_language(l))
+        encoding_menu = tk.Menu(menubar, tearoff=0)
+        encode_targets = ["ANSI", "UTF-8", "UTF-8-BOM", "UTF-16 LE", "UTF-16 BE"]
+        for label in encode_targets:
+            encoding_menu.add_command(
+                label=f"Encode in {label}", command=lambda l=label: on_set_encoding(l)
+            )
 
-        settings_menu = tk.Menu(menubar, tearoff=0)
-        settings_menu.add_command(label="Preferences (Font)", command=on_choose_font)
-        settings_menu.add_checkbutton(
-            label="Word Wrap", command=on_word_wrap, variable=self.word_wrap_var
-        )
-        settings_menu.add_checkbutton(
-            label="Status Bar", command=on_toggle_status_bar, variable=self.status_bar_var
-        )
-        settings_menu.add_checkbutton(
-            label="Toolbar", command=on_toggle_toolbar, variable=self.toolbar_var
-        )
+        encoding_menu.add_separator()
+        for label in encode_targets:
+            encoding_menu.add_command(
+                label=f"Convert to {label}", command=lambda l=label: on_convert_encoding(l)
+            )
 
         self.commands_menu = tk.Menu(menubar, tearoff=0)
         self.commands_menu.add_command(label="Command Palette...", command=on_open_command_palette, accelerator="Ctrl+Shift+P")
@@ -263,8 +263,7 @@ class NotepadUI:
         menubar.add_cascade(label="Search", menu=search_menu)
         menubar.add_cascade(label="Format", menu=format_menu)
         menubar.add_cascade(label="View", menu=view_menu)
-        menubar.add_cascade(label="Language", menu=language_menu)
-        menubar.add_cascade(label="Settings", menu=settings_menu)
+        menubar.add_cascade(label="Encoding", menu=encoding_menu)
         menubar.add_cascade(label="Commands", menu=self.commands_menu)
         self.root.config(menu=menubar)
 
@@ -494,7 +493,7 @@ class NotepadUI:
             for path in recent:
                 self.recent_menu.add_command(label=path, command=lambda p=path: self._on_open_recent(p))
 
-    def update_commands_menu(self, commands: list[tuple[str, callable]]) -> None:
+    def update_commands_menu(self, commands: list[dict[str, object]]) -> None:
         if not self.commands_menu:
             return
 
@@ -503,8 +502,9 @@ class NotepadUI:
             self.commands_menu.add_command(label="(no commands)", state=tk.DISABLED)
             return
 
-        for name, action in commands[:15]:
-            self.commands_menu.add_command(label=name, command=action)
+        for command in commands[:15]:
+            label = f"{command['icon']} {command['name']}"
+            self.commands_menu.add_command(label=label, command=command["action"])
 
     def prompt_for_font_choice(self, initial_family: str, initial_size: int) -> tuple[str, int] | None:
         dialog = tk.Toplevel(self.root)
