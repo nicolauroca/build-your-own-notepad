@@ -494,7 +494,7 @@ class NotepadUI:
             for path in recent:
                 self.recent_menu.add_command(label=path, command=lambda p=path: self._on_open_recent(p))
 
-    def update_commands_menu(self, commands: list[tuple[str, callable]]) -> None:
+    def update_commands_menu(self, commands: list[dict[str, object]]) -> None:
         if not self.commands_menu:
             return
 
@@ -503,8 +503,9 @@ class NotepadUI:
             self.commands_menu.add_command(label="(no commands)", state=tk.DISABLED)
             return
 
-        for name, action in commands[:15]:
-            self.commands_menu.add_command(label=name, command=action)
+        for command in commands[:15]:
+            label = f"{command['icon']} {command['name']}"
+            self.commands_menu.add_command(label=label, command=command["action"])
 
     def prompt_for_font_choice(self, initial_family: str, initial_size: int) -> tuple[str, int] | None:
         dialog = tk.Toplevel(self.root)
