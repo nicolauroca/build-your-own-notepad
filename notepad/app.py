@@ -36,7 +36,7 @@ class NotepadApp:
         self.word_wrap = False
         self.toolbar_visible = True
 
-        self.font = tkfont.Font(family="Arial", size=12)
+        self.font = self._select_editor_font()
 
         self.closed_documents: list[dict[str, str | None]] = []
         self.recent_files: list[str] = []
@@ -118,6 +118,25 @@ class NotepadApp:
         self.update_title()
         self.update_status()
         return document
+
+    def _select_editor_font(self) -> tkfont.Font:
+        """Pick a modern, developer-friendly font with fallbacks."""
+
+        preferred = (
+            "JetBrains Mono",
+            "Cascadia Code",
+            "Fira Code",
+            "IBM Plex Mono",
+            "Menlo",
+            "Consolas",
+            "SF Mono",
+        )
+        available = set(tkfont.families())
+        for family in preferred:
+            if family in available:
+                return tkfont.Font(family=family, size=13)
+
+        return tkfont.Font(family="Courier New", size=12)
 
     def _get_document_for_widget(self, widget: tk.Widget) -> Document | None:
         for document in self.documents.values():
