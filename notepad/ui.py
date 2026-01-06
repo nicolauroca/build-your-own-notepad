@@ -66,6 +66,7 @@ class NotepadUI:
         self.word_wrap_var = tk.BooleanVar(value=False)
         self.status_bar_var = tk.BooleanVar(value=True)
         self.toolbar_var = tk.BooleanVar(value=True)
+        self.encoding_var = tk.StringVar(value="UTF-8")
 
         self.toolbar = tk.Frame(self.root, bd=1, relief=tk.RAISED)
         self._on_open_recent = on_open_recent
@@ -244,8 +245,11 @@ class NotepadUI:
         encoding_menu = tk.Menu(menubar, tearoff=0)
         encode_targets = ["ANSI", "UTF-8", "UTF-8-BOM", "UTF-16 LE", "UTF-16 BE"]
         for label in encode_targets:
-            encoding_menu.add_command(
-                label=f"Encode in {label}", command=lambda l=label: on_set_encoding(l)
+            encoding_menu.add_radiobutton(
+                label=f"Encode in {label}",
+                value=label,
+                variable=self.encoding_var,
+                command=lambda l=label: on_set_encoding(l),
             )
 
         encoding_menu.add_separator()
@@ -299,6 +303,12 @@ class NotepadUI:
             on_reopen_closed_tab,
             on_duplicate_tab,
         )
+
+    def set_selected_encoding(self, label: str) -> None:
+        """Highlight the active encoding in the Encoding menu."""
+
+        if label:
+            self.encoding_var.set(label)
 
     def _build_toolbar(
         self,
