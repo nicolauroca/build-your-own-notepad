@@ -22,7 +22,7 @@ class Document:
         self.text = text_widget
         self.file_path: str | None = None
         self.dirty = False
-        self.language = "Plain Text"
+        self.encoding = "UTF-8"
 
 
 class NotepadApp:
@@ -82,7 +82,8 @@ class NotepadApp:
             on_find_previous=self.find_previous,
             on_replace=self.replace,
             on_go_to=self.go_to,
-            on_set_language=self.set_language,
+            on_set_encoding=self.set_encoding,
+            on_convert_encoding=self.convert_encoding,
             on_content_change=self.on_content_change,
             on_cursor_move=self.update_status,
             on_tab_change=self.on_tab_change,
@@ -159,7 +160,7 @@ class NotepadApp:
 
         index = document.text.index(tk.INSERT)
         line, column = (int(num) for num in index.split("."))
-        self.ui.set_status(f"{document.language} | Ln {line}, Col {column + 1}")
+        self.ui.set_status(f"{document.encoding} | Ln {line}, Col {column + 1}")
 
     # Command palette helpers
     def _register_command(self, name: str, action, icon: str) -> None:
@@ -223,6 +224,16 @@ class NotepadApp:
         self._register_command("Strip BOM", self.strip_bom, "🧽")
         self._register_command("Convert quotes to double", self.normalize_double_quotes, "💬")
         self._register_command("Convert quotes to single", self.normalize_single_quotes, "🗨️")
+
+    def _encoding_codec(self, label: str) -> str:
+        codecs = {
+            "UTF-8": "utf-8",
+            "UTF-8-BOM": "utf-8-sig",
+            "UTF-16 LE": "utf-16-le",
+            "UTF-16 BE": "utf-16-be",
+            "ANSI": "cp1252",
+        }
+        return codecs.get(label, "utf-8")
 
     def open_command_palette(self) -> None:  # pragma: no cover - UI driven
         palette = tk.Toplevel(self.root)
@@ -352,6 +363,7 @@ class NotepadApp:
         document.text.insert(tk.END, content)
         document.file_path = file_path
         document.dirty = False
+        document.encoding = "UTF-8"
         self._add_recent_file(file_path)
         self.update_title()
 
@@ -360,7 +372,9 @@ class NotepadApp:
 
         document = document or self._current_document()
         content = document.text.get("1.0", "end-1c")
-        file_path = file_ops.save_file(content, document.file_path)
+        file_path = file_ops.save_file(
+            content, document.file_path, encoding=self._encoding_codec(document.encoding)
+        )
         if file_path is None:
             return False
 
@@ -375,7 +389,7 @@ class NotepadApp:
 
         document = self._current_document()
         content = document.text.get("1.0", "end-1c")
-        file_path = file_ops.save_file_as(content)
+        file_path = file_ops.save_file_as(content, encoding=self._encoding_codec(document.encoding))
         if file_path is None:
             return
 
@@ -399,7 +413,7 @@ class NotepadApp:
             return
 
         try:
-            with open(document.file_path, "r", encoding="utf-8") as file:
+            with open(document.file_path, "r", encoding=self._encoding_codec(document.encoding)) as file:
                 content = file.read()
         except OSError as exc:
             messagebox.showerror("Reload", f"Could not reload file:\n{exc}")
@@ -593,11 +607,33 @@ class NotepadApp:
         document.text.see(tk.INSERT)
         self.update_status()
 
-    def set_language(self, language: str) -> None:  # pragma: no cover - UI driven
-        """Label the current document with a language hint."""
+    def set_encoding(self, label: str) -> None:  # pragma: no cover - UI driven
+        """Update the encoding metadata for the active document."""
 
         document = self._current_document()
-        document.language = language
+        document.encoding = label
+        self.update_status()
+        self.update_title()
+
+    def convert_encoding(self, label: str) -> None:  # pragma: no cover - UI driven
+        """Transcode the document content and persist the chosen encoding."""
+
+        document = self._current_document()
+        target_codec = self._encoding_codec(label)
+        content = document.text.get("1.0", "end-1c")
+        try:
+            converted = content.encode(target_codec, errors="strict").decode(target_codec)
+        except UnicodeError:
+            messagebox.showerror(
+                "Encoding",
+                f"Content contains characters incompatible with {label}.",
+            )
+            return
+
+        document.text.delete("1.0", tk.END)
+        document.text.insert("1.0", converted)
+        document.encoding = label
+        document.dirty = True
         self.update_status()
         self.update_title()
 
@@ -607,8 +643,8 @@ class NotepadApp:
         for document in self.documents.values():
             name = self._document_display_name(document)
             dirty_marker = " *" if document.dirty else ""
-            language_prefix = f"[{document.language}] " if document.language else ""
-            self.ui.set_tab_title(document.tab_id, f"{language_prefix}{name}{dirty_marker}")
+            encoding_prefix = f"[{document.encoding}] " if document.encoding else ""
+            self.ui.set_tab_title(document.tab_id, f"{encoding_prefix}{name}{dirty_marker}")
 
         current_document = self._current_document()
         name = self._document_display_name(current_document)
