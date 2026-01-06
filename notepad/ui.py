@@ -336,7 +336,12 @@ class NotepadUI:
 
     def _configure_style(self) -> None:
         self.root.configure(bg=self.colors["background"])
-        self.root.option_add("*Font", "Segoe UI 10")
+        base_font = tkfont.nametofont("TkDefaultFont")
+        base_font.configure(family="Segoe UI", size=10)
+        strong_font = base_font.copy()
+        strong_font.configure(weight="bold")
+        small_font = base_font.copy()
+        small_font.configure(size=9)
         style = ttk.Style(self.root)
         style.theme_use("clam")
 
@@ -349,7 +354,7 @@ class NotepadUI:
             foreground=self.colors["text"],
             padding=(10, 7),
             borderwidth=0,
-            font=("Segoe UI", 10, "bold"),
+            font=strong_font,
         )
         style.map(
             "Toolbar.TButton",
@@ -368,7 +373,7 @@ class NotepadUI:
             background=self.colors["card"],
             foreground=self.colors["muted"],
             padding=(14, 9),
-            font=("Segoe UI", 10, "bold"),
+            font=strong_font,
             borderwidth=0,
         )
         style.map(
@@ -382,7 +387,7 @@ class NotepadUI:
             background=self.colors["panel"],
             foreground=self.colors["muted"],
             padding=(12, 6),
-            font=("Segoe UI", 9),
+            font=small_font,
         )
         style.configure(
             "Horizontal.TScrollbar",
