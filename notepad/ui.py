@@ -56,19 +56,35 @@ class NotepadUI:
         on_cursor_move,
         on_tab_change,
         on_open_command_palette,
+        on_change_theme,
     ) -> None:
         self.root = root
-        self.colors = {
-            "background": "#0b1221",
-            "panel": "#0f172a",
-            "card": "#111827",
-            "border": "#1f2937",
-            "accent": "#7c3aed",
-            "accent_alt": "#6366f1",
-            "text": "#e5e7eb",
-            "muted": "#9ca3af",
-            "selection": "#312e81",
+        self.themes = {
+            "dark": {
+                "background": "#0b1221",
+                "panel": "#0f172a",
+                "card": "#111827",
+                "border": "#1f2937",
+                "accent": "#7c3aed",
+                "accent_alt": "#6366f1",
+                "text": "#e5e7eb",
+                "muted": "#9ca3af",
+                "selection": "#312e81",
+            },
+            "light": {
+                "background": "#f7f7fb",
+                "panel": "#ececf5",
+                "card": "#ffffff",
+                "border": "#d7d7e0",
+                "accent": "#2563eb",
+                "accent_alt": "#1d4ed8",
+                "text": "#1f2937",
+                "muted": "#4b5563",
+                "selection": "#c7d2fe",
+            },
         }
+        self.theme_var = tk.StringVar(value="dark")
+        self.colors = self.themes[self.theme_var.get()]
 
         self._configure_style()
 
@@ -83,6 +99,7 @@ class NotepadUI:
         self.status_bar_var = tk.BooleanVar(value=True)
         self.toolbar_var = tk.BooleanVar(value=True)
         self.encoding_var = tk.StringVar(value="UTF-8")
+        self.on_change_theme = on_change_theme
 
         self.toolbar = ttk.Frame(self.root, style="Toolbar.TFrame")
         self._on_open_recent = on_open_recent
@@ -136,6 +153,7 @@ class NotepadUI:
             on_set_encoding,
             on_convert_encoding,
             on_open_command_palette,
+            on_change_theme,
         )
         self._build_toolbar(
             on_new,
@@ -196,6 +214,7 @@ class NotepadUI:
         on_set_encoding,
         on_convert_encoding,
         on_open_command_palette,
+        on_change_theme,
     ) -> None:
         menubar = tk.Menu(self.root)
 
@@ -256,6 +275,19 @@ class NotepadUI:
         )
         view_menu.add_checkbutton(
             label="Toolbar", command=on_toggle_toolbar, variable=self.toolbar_var
+        )
+        view_menu.add_separator()
+        view_menu.add_radiobutton(
+            label="Dark Mode",
+            value="dark",
+            variable=self.theme_var,
+            command=lambda: on_change_theme("dark"),
+        )
+        view_menu.add_radiobutton(
+            label="Light Mode",
+            value="light",
+            variable=self.theme_var,
+            command=lambda: on_change_theme("light"),
         )
 
         encoding_menu = tk.Menu(menubar, tearoff=0)
@@ -338,6 +370,8 @@ class NotepadUI:
         self.root.configure(bg=self.colors["background"])
         base_font = tkfont.nametofont("TkDefaultFont")
         base_font.configure(family="Segoe UI", size=10)
+        icon_font_family = "Segoe UI Emoji" if "Segoe UI Emoji" in tkfont.families() else base_font.actual("family")
+        self.icon_font = tkfont.Font(family=icon_font_family, size=12)
         strong_font = base_font.copy()
         strong_font.configure(weight="bold")
         small_font = base_font.copy()
@@ -354,7 +388,7 @@ class NotepadUI:
             foreground=self.colors["text"],
             padding=(10, 7),
             borderwidth=0,
-            font=strong_font,
+            font=self.icon_font,
         )
         style.map(
             "Toolbar.TButton",
@@ -404,6 +438,22 @@ class NotepadUI:
             arrowcolor=self.colors["text"],
         )
 
+    def set_theme(self, mode: str) -> None:
+        if mode not in self.themes:
+            return
+
+        self.theme_var.set(mode)
+        self.colors = self.themes[mode]
+        self._configure_style()
+        self.frame.configure(style="Background.TFrame")
+        self.toolbar.configure(style="Toolbar.TFrame")
+        self.status_bar.configure(style="Status.TLabel")
+        self.notebook.configure(style="Modern.TNotebook")
+        for child in self.toolbar.winfo_children():
+            child.configure(style="Toolbar.TButton")
+        for text in self.text_widgets.values():
+            text.configure(**self._text_theme_kwargs())
+
     def set_selected_encoding(self, label: str) -> None:
         """Highlight the active encoding in the Encoding menu."""
 
@@ -450,6 +500,7 @@ class NotepadUI:
                 text=symbol,
                 command=command,
                 style="Toolbar.TButton",
+                width=3,
             )
             btn.pack(side=tk.LEFT, padx=3, pady=6)
             btn.bind("<Enter>", lambda e, t=tooltip: self.status.set(t))
@@ -572,9 +623,12 @@ class NotepadUI:
         except tk.TclError:
             return
 
-        x, y, width, _height = self.notebook.bbox(index)
+        x, y, width, height = self.notebook.bbox(index)
+        if not (x <= event.x <= x + width and y <= event.y <= y + height):
+            return
+
         close_region_start = x + width - 24
-        if event.x >= close_region_start:
+        if close_region_start <= event.x <= x + width:
             tab_id = self.notebook.tabs()[index]
             self.notebook.select(tab_id)
             self._on_close_tab()
