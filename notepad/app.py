@@ -698,7 +698,7 @@ class NotepadApp:
         clone = self._add_blank_document(title=self._document_display_name(document))
         content = document.text.get("1.0", "end-1c")
         clone.text.insert("1.0", content)
-        clone.language = document.language
+        clone.encoding = document.encoding
         clone.dirty = document.dirty
         self.update_title()
 
@@ -713,7 +713,7 @@ class NotepadApp:
         document = self._add_blank_document(title=state.get("title", "Untitled"))
         document.text.insert("1.0", state.get("content", ""))
         document.file_path = state.get("file_path")
-        document.language = state.get("language", "Plain Text")
+        document.encoding = state.get("encoding", "UTF-8")
         document.dirty = False
         self.update_title()
 
@@ -734,7 +734,7 @@ class NotepadApp:
             "title": self._document_display_name(document),
             "content": document.text.get("1.0", "end-1c"),
             "file_path": document.file_path,
-            "language": document.language,
+            "encoding": document.encoding,
         }
         self.closed_documents.append(snapshot)
 
