@@ -1,7 +1,8 @@
 """Entry point for the notepad application."""
 
-from notepad.app import run
+from notepad.app import NotepadApp
 
 
 if __name__ == "__main__":
-    run()
+    app = NotepadApp()
+    app.run()

@@ -331,7 +331,7 @@ class NotepadApp:
         if scope == "selection":
             document = self._current_document()
             if not self._selection_range(document.text):
-                messagebox.showinfo("Command Palette", "Seleccione texto para usar esta acción.")
+                messagebox.showinfo("Command Palette", "Select text to use this action.")
                 return False
             action()
             return True
@@ -348,7 +348,6 @@ class NotepadApp:
         action()
         return True
 
-
     def new_file(self) -> None:  # pragma: no cover - UI driven
         """Create a blank document in a new tab."""
 
@@ -358,7 +357,8 @@ class NotepadApp:
         """Open a new application window."""
 
         python_executable = sys.executable or "python"
-        self.root.after(0, lambda: subprocess.Popen([python_executable, "main.py"], close_fds=True))
+        script_path = os.path.join(os.path.dirname(__file__), "..", "main.py")
+        self.root.after(0, lambda: subprocess.Popen([python_executable, script_path], close_fds=True))
 
     def on_exit(self) -> None:  # pragma: no cover - UI driven
         """Prompt for unsaved changes before quitting."""
