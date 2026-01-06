@@ -403,12 +403,11 @@ class NotepadUI:
             borderwidth=0,
             tabmargins=(10, 6, 10, 0),
         )
-        self.tab_padding_x = 14
         style.configure(
             "Modern.TNotebook.Tab",
             background=self.colors["card"],
             foreground=self.colors["muted"],
-            padding=(self.tab_padding_x, 9),
+            padding=(14, 9),
             font=strong_font,
             borderwidth=0,
         )
@@ -629,19 +628,8 @@ class NotepadUI:
         if not (x <= event.x <= x + width and y <= event.y <= y + height):
             return
 
-        text = self.notebook.tab(index, "text") or ""
-        cross_index = text.rfind("✕")
-        if cross_index == -1:
-            return
-
-        prefix = text[:cross_index]
-        prefix_width = self.tab_font.measure(prefix)
-        cross_width = self.tab_font.measure("✕")
-        padding = getattr(self, "tab_padding_x", 14)
-        close_start = x + padding + prefix_width - 6
-        close_end = close_start + cross_width + 12
-
-        if close_start <= event.x <= close_end:
+        close_region_start = x + width - max(24, self.tab_font.measure("✕") + 12)
+        if close_region_start <= event.x <= x + width:
             tab_id = self.notebook.tabs()[index]
             self.notebook.select(tab_id)
             self._on_close_tab()
