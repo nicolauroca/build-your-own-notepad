@@ -114,6 +114,7 @@ class NotepadApp:
         document = Document(tab_id, text_widget)
         self.documents[tab_id] = document
         self.ui.set_word_wrap(self.word_wrap)
+        self.ui.set_selected_encoding(document.encoding)
         self.update_title()
         self.update_status()
         return document
@@ -160,6 +161,7 @@ class NotepadApp:
 
         index = document.text.index(tk.INSERT)
         line, column = (int(num) for num in index.split("."))
+        self.ui.set_selected_encoding(document.encoding)
         self.ui.set_status(f"{document.encoding} | Ln {line}, Col {column + 1}")
 
     # Command palette helpers
@@ -350,7 +352,7 @@ class NotepadApp:
     def open_file(self) -> None:  # pragma: no cover - UI driven
         """Open a file, optionally prompting to save unsaved changes first."""
 
-        content, file_path = file_ops.open_file()
+        content, file_path, encoding = file_ops.open_file()
         if file_path is None:
             return
 
@@ -363,9 +365,10 @@ class NotepadApp:
         document.text.insert(tk.END, content)
         document.file_path = file_path
         document.dirty = False
-        document.encoding = "UTF-8"
+        document.encoding = encoding or "UTF-8"
         self._add_recent_file(file_path)
         self.update_title()
+        self.update_status()
 
     def save_file(self, document: Document | None = None) -> bool:  # pragma: no cover - UI driven
         """Save the current buffer to disk."""
@@ -612,6 +615,7 @@ class NotepadApp:
 
         document = self._current_document()
         document.encoding = label
+        self.ui.set_selected_encoding(label)
         self.update_status()
         self.update_title()
 
@@ -634,6 +638,7 @@ class NotepadApp:
         document.text.insert("1.0", converted)
         document.encoding = label
         document.dirty = True
+        self.ui.set_selected_encoding(label)
         self.update_status()
         self.update_title()
 
@@ -758,19 +763,18 @@ class NotepadApp:
     def open_recent(self, file_path: str) -> None:  # pragma: no cover - UI driven
         """Open a file from the recent files list."""
 
-        try:
-            with open(file_path, "r", encoding="utf-8") as file:
-                content = file.read()
-        except OSError as exc:
-            messagebox.showerror("Open Recent", f"Could not open file:\n{exc}")
+        content, encoding = file_ops.read_file_with_encoding(file_path)
+        if content is None:
             return
 
         document = self._add_blank_document(title=os.path.basename(file_path))
         document.text.insert("1.0", content)
         document.file_path = file_path
         document.dirty = False
+        document.encoding = encoding or "UTF-8"
         self._add_recent_file(file_path)
         self.update_title()
+        self.update_status()
 
     # ----- Advanced editing helpers -----
     def _active_text(self) -> tk.Text:
