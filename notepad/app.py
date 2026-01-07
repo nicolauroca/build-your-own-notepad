@@ -15,9 +15,25 @@ from .ui import NotepadUI
 
 
 class Document:
-    """Represents the state of a single document tab."""
+    """Represents the state of a single document tab in the editor.
+
+    Attributes
+    ----------
+    tab_id:
+        The identifier provided by the ``ttk.Notebook`` widget for the tab.
+    text:
+        The ``tk.Text`` widget that renders and stores the document content.
+    file_path:
+        Absolute path of the file on disk, or ``None`` when the tab is unsaved.
+    dirty:
+        ``True`` when the buffer has unsaved changes.
+    encoding:
+        Human-friendly label for the chosen file encoding (e.g. ``"UTF-8"``).
+    """
 
     def __init__(self, tab_id: str, text_widget: tk.Text) -> None:
+        """Initialize a document wrapper for a newly created tab."""
+
         self.tab_id = tab_id
         self.text = text_widget
         self.file_path: str | None = None
@@ -26,9 +42,15 @@ class Document:
 
 
 class NotepadApp:
-    """A minimal notepad-like text editor built with Tkinter."""
+    """A minimal notepad-like text editor built with Tkinter.
+
+    The class orchestrates UI wiring, document lifecycle management, and
+    editing commands that mirror (and extend) the classic Notepad experience.
+    """
 
     def __init__(self) -> None:
+        """Boot the Tkinter window and initialize application state."""
+
         self.root = tk.Tk()
         self.root.title("Notepad")
         self.root.geometry("900x650")
@@ -44,6 +66,7 @@ class NotepadApp:
         self.last_search_query: str | None = None
         self.command_actions: list[dict[str, object]] = []
 
+        # Build the UI with callbacks so the view and controller remain decoupled.
         self.ui = NotepadUI(
             self.root,
             text_font=self.font,
@@ -141,21 +164,29 @@ class NotepadApp:
         return tkfont.Font(family="Courier New", size=12)
 
     def _get_document_for_widget(self, widget: tk.Widget) -> Document | None:
+        """Return the ``Document`` instance that owns the given text widget."""
+
         for document in self.documents.values():
             if document.text == widget:
                 return document
         return None
 
     def _current_document(self) -> Document:
+        """Return the active document, creating a wrapper if needed."""
+
         tab_id, widget = self.ui.get_current_tab()
         if tab_id not in self.documents and widget:
             self.documents[tab_id] = Document(tab_id, widget)
         return self.documents[tab_id]
 
     def _select_document(self, document: Document) -> None:
+        """Visually focus the requested document tab."""
+
         self.ui.select_tab(document.tab_id)
 
     def _document_display_name(self, document: Document) -> str:
+        """Return a human-friendly label for a document, preferring its filename."""
+
         return os.path.basename(document.file_path) if document.file_path else "Untitled"
 
     def on_content_change(self, event=None) -> None:  # pragma: no cover - UI driven
@@ -186,14 +217,20 @@ class NotepadApp:
         self.ui.set_status(f"{document.encoding} | Ln {line}, Col {column + 1}")
 
     def change_theme(self, mode: str) -> None:
+        """Switch the interface to the requested theme variant."""
+
         self.theme_mode = mode
         self.ui.set_theme(mode)
 
     # Command palette helpers
     def _register_command(self, name: str, action, icon: str) -> None:
+        """Store a command palette entry with its handler and emoji icon."""
+
         self.command_actions.append({"name": name, "action": action, "icon": icon})
 
     def _register_command_actions(self) -> None:
+        """Populate the in-app command palette with supported actions."""
+
         self.command_actions.clear()
         self._register_command("Toggle light/dark mode", self._toggle_theme_mode, "🌓")
         self._register_command("Uppercase selection", self.uppercase_selection, "🔠")
@@ -254,10 +291,14 @@ class NotepadApp:
         self._register_command("Convert quotes to single", self.normalize_single_quotes, "🗨️")
 
     def _toggle_theme_mode(self) -> None:
+        """Switch between light and dark themes from the palette."""
+
         next_mode = "light" if self.theme_mode == "dark" else "dark"
         self.change_theme(next_mode)
 
     def _encoding_codec(self, label: str) -> str:
+        """Translate a human-friendly encoding label to a Python codec name."""
+
         codecs = {
             "UTF-8": "utf-8",
             "UTF-8-BOM": "utf-8-sig",
@@ -300,6 +341,8 @@ class NotepadApp:
         scrollbar.config(command=listbox.yview)
 
         def refresh_list(*_):
+            """Filter commands based on the search query in the palette."""
+
             query = query_var.get().lower()
             listbox.delete(0, tk.END)
             for command in self.command_actions:
@@ -310,6 +353,8 @@ class NotepadApp:
                 listbox.selection_set(0)
 
         def run_selected(event=None):
+            """Execute the highlighted command using the chosen scope."""
+
             if not listbox.size():
                 return
             selection = listbox.get(listbox.curselection())
@@ -817,14 +862,20 @@ class NotepadApp:
             return None
 
     def _apply_transform(self, transform, *, default_to_document: bool = True) -> None:
+        """Apply a text transformation over a selection, line, or whole buffer."""
+
         document = self._current_document()
         text = document.text
         selection = self._selection_range(text)
         if selection:
             start, end = selection
         elif default_to_document:
+            # When no selection exists, operate on the entire document so that
+            # formatting commands feel consistent with IDE behavior.
             start, end = "1.0", "end-1c"
         else:
+            # Fallback for commands that should be line-scoped rather than whole
+            # document (e.g., transpose characters).
             line = text.index("insert linestart"), text.index("insert lineend")
             start, end = line
 

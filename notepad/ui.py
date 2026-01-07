@@ -8,7 +8,7 @@ from tkinter import ttk
 
 
 class NotepadUI:
-    """Encapsulates the Tkinter widgets for the notepad."""
+    """Encapsulates and wires all Tkinter widgets for the notepad UI."""
 
     def __init__(
         self,
@@ -58,6 +58,8 @@ class NotepadUI:
         on_open_command_palette,
         on_change_theme,
     ) -> None:
+        """Construct the full user interface and bind controller callbacks."""
+
         self.root = root
         self.themes = {
             "dark": {
@@ -216,6 +218,8 @@ class NotepadUI:
         on_open_command_palette,
         on_change_theme,
     ) -> None:
+        """Create the menu bar and bind every command to controller callbacks."""
+
         menubar = tk.Menu(self.root)
 
         file_menu = tk.Menu(menubar, tearoff=0)
@@ -478,6 +482,8 @@ class NotepadUI:
         on_find,
         on_replace,
     ) -> None:
+        """Render the quick-access toolbar with the most-used actions."""
+
         buttons = [
             ("📄", "New file", on_new),
             ("📂", "Open", on_open),
@@ -510,6 +516,8 @@ class NotepadUI:
         self.toolbar.pack(side=tk.TOP, fill=tk.X, before=self.frame, pady=(4, 2))
 
     def _build_editor(self, on_content_change, on_cursor_move, on_tab_change) -> None:
+        """Configure the notebook widget and bind key editor events."""
+
         self.notebook.pack(fill=tk.BOTH, expand=True)
         self.notebook.bind("<<NotebookTabChanged>>", on_tab_change)
         self.notebook.bind("<Button-3>", self._open_tab_menu)
@@ -519,6 +527,8 @@ class NotepadUI:
         self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
     def add_tab(self, title: str, text_font: tkfont.Font, on_content_change, on_cursor_move):
+        """Insert a new tab with a configured text widget and scrollbars."""
+
         frame = ttk.Frame(self.notebook, style="Card.TFrame")
         y_scrollbar = ttk.Scrollbar(frame, orient=tk.VERTICAL)
         y_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -598,6 +608,8 @@ class NotepadUI:
         on_reopen_closed_tab,
         on_duplicate_tab,
     ) -> None:
+        """Initialize the context menu shown for each document tab."""
+
         self.tab_menu = tk.Menu(self.root, tearoff=0)
         self.tab_menu.add_command(label="Close", command=on_close_tab)
         self.tab_menu.add_command(label="Close All", command=on_close_all)
@@ -710,6 +722,8 @@ class NotepadUI:
             listbox.insert(tk.END, family)
 
         def on_select(event=None):
+            """Preview the currently highlighted font in the sample label."""
+
             selection = listbox.curselection()
             if not selection:
                 return
@@ -717,6 +731,8 @@ class NotepadUI:
             preview.configure(font=(family, size_var.get()))
 
         def accept():
+            """Confirm the chosen font and close the selector dialog."""
+
             selection = listbox.curselection()
             if not selection:
                 dialog.destroy()
@@ -725,6 +741,8 @@ class NotepadUI:
             dialog.destroy()
 
         def cancel():
+            """Dismiss the font dialog without applying changes."""
+
             dialog.result = None
             dialog.destroy()
 
