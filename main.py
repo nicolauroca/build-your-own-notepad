@@ -1,4 +1,4 @@
-"""Entry point for the notepad application."""
+"""Entry point for launching the Tkinter notepad application."""
 
 from notepad.app import NotepadApp
 

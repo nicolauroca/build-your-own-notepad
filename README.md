@@ -2,6 +2,18 @@
 
 An educational project that demonstrates how to build a simple yet functional Notepad-like text editor using Python and Tkinter. It now mirrors the classic Notepad experience with File/Edit/Format/View menus, word wrap, zoom controls, and customizable fonts.
 
+This MVP was creado íntegramente con la ayuda de **OpenAI Codex**, explorando cómo una IA especializada en código puede conducir a un editor completo, estable y listo para usarse. El resultado es una alternativa ligera a Notepad con varias utilidades extra y un consumo de memoria aproximado de la mitad frente a la aplicación tradicional.
+
+## Cómo reproducir este flujo con OpenAI Codex
+
+1. **Definir requisitos claros**: documenta el alcance (menús, atajos, pestañas, formato, etc.) y fija que el objetivo es un MVP cerrado pero funcional.
+2. **Iterar con Codex**: solicita generación de código por módulos (UI, operaciones de archivo, comandos de edición) y valida cada bloque en ejecución local.
+3. **Añadir documentación y comentarios**: pide a Codex docstrings y anotaciones que expliquen decisiones de diseño, para que cualquier contribuidor entienda el flujo.
+4. **Probar y refinar**: verifica manualmente los comportamientos clave (abrir/guardar, pestañas, comandos avanzados) y solicita a Codex ajustes incrementales.
+5. **Cerrar el MVP**: congela el alcance tras cumplir los requisitos, publica el código y deja claras las expectativas de mantenimiento.
+
+> Nota: el proyecto se publica como un MVP cerrado, con código abierto para evolutivos y contribuciones de la comunidad. Dada la abundancia de alternativas a Notepad ya disponibles, no se prevé un mantenimiento activo.
+
 ## Installation
 
 ```bash
